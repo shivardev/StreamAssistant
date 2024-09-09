@@ -1,0 +1,23 @@
+.vscode
+*.class
+# Maven build output
+target/
+
+# IDEs
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Local Maven repository
+.mvn/
+
+# Generated files
+*.log
+*.tmp
+
+# System-specific files
+.DS_Store
+Thumbs.db

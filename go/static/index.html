@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Alerts</title>
+    <style>
+        #alerts {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .alert {
+            font-size: 24px;
+            color: red;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 80%;
+            display: flex;
+            align-items: center;
+        }
+        .alert img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="alerts">Waiting for messages...</div>
+
+    <script>
+        const socket = new WebSocket('ws://localhost:3000/ws');
+
+        socket.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            showAlert(message);
+        };
+
+        function showAlert(message) {
+            const alerts = document.getElementById('alerts');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert';
+            alertDiv.innerHTML = `
+                <img src="${message.user_image}" alt="${message.author_name}">
+                <div>
+                    <strong>${message.author_name}</strong>: ${message.text}
+                </div>
+            `;
+            alerts.appendChild(alertDiv);
+
+            // Clear alert after 10 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 10000);
+        }
+    </script>
+</body>
+</html>
