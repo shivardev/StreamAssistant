@@ -21,3 +21,4 @@ target/
 # System-specific files
 .DS_Store
 Thumbs.db
+streaming/dependency-reduced-pom.xml

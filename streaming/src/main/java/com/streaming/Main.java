@@ -16,24 +16,23 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 
 public class Main {
 
-    // static String youtubeLiveUrl = "https://www.youtube.com/watch?v=WFP8sUX-aaw";
+
     static String lastChatId = "";
     static String chatUrl = "";
     static String[] ignoredAuthers = new String[]{"Nightbot", "YouTube"};
+    static final String ChannelLiveUrl = "https://www.youtube.com/channel/UCPFM_Ug62Ei3CUfvquG4KOg/live";
 
     public static void main(String[] args) {
         // Fetch the live broadcase from youtube API and get the live video link
-        String youtubeLiveUrl =  YouTubeLiveFetcher.fetchURL();
-        System.out.println("YouTube Live URL: " + youtubeLiveUrl);
         WebDriver driver;
         WebDriverManager.chromedriver().setup();
         driver = new ChromeDriver();
 
-        driver.get(youtubeLiveUrl);
+        driver.get(ChannelLiveUrl);
 
         // Wait for the page to load
         try {
-            Thread.sleep(3000);
+            Thread.sleep(4000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

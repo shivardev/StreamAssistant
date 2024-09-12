@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/gofiber/contrib/websocket"
@@ -49,23 +50,24 @@ func processSpeakQueue() {
 	for {
 		// Receive messages from the queue (blocking operation)
 		msg := <-speakQueue
-
-		fmt.Println("Processing !speak message:", msg.MessageContent)
-		jsonMsg, err := json.Marshal(msg)
-		if err != nil {
-			log.Println("Error marshalling message to JSON:", err)
-			continue
-		}
-		// Send the message to all connected WebSocket clients
-		mu.Lock()
-		for conn := range connections {
-			if err := conn.WriteMessage(websocket.TextMessage, []byte(jsonMsg)); err != nil {
-				log.Println("WebSocket write error:", err)
-				conn.Close()
-				delete(connections, conn)
+		if len(msg.MessageContent) > 6 && strings.HasPrefix(msg.MessageContent, "!speak") {
+			fmt.Println("Processing !speak message:", msg.MessageContent)
+			jsonMsg, err := json.Marshal(msg)
+			if err != nil {
+				log.Println("Error marshalling message to JSON:", err)
+				continue
 			}
+			// Send the message to all connected WebSocket clients
+			mu.Lock()
+			for conn := range connections {
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(jsonMsg)); err != nil {
+					log.Println("WebSocket write error:", err)
+					conn.Close()
+					delete(connections, conn)
+				}
+			}
+			mu.Unlock()
 		}
-		mu.Unlock()
 
 	}
 }

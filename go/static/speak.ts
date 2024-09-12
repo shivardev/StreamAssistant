@@ -5,7 +5,7 @@ interface Msg {
     messageContent: string;
 }
 var defaultVoiceName = 'Microsoft Neerja Online (Natural) - English (India)';
-const ws = new WebSocket("ws://localhost:3000/ws/123");
+const ws = new WebSocket("ws://10.0.0.128:3000/ws/123");
 let messageQueue: Msg[] = [];
 let synth = speechSynthesis,
     isSpeaking = false;
@@ -43,7 +43,7 @@ ws.onopen = function (event) {
 };
 // Handle WebSocket errors
 ws.onerror = function (event) {
-
+    
     console.error("WebSocket error observed:", event);
 };
 
@@ -51,7 +51,7 @@ ws.onerror = function (event) {
 function playAudio(msg: Msg) {
     const text = `${msg.authorName} says, ${msg.messageContent}`;
     console.log(text, typeof text);
-    let utterance = new SpeechSynthesisUtterance(`${msg.authorName} says, ${msg.messageContent}`);
+    let utterance = new SpeechSynthesisUtterance(`${msg.authorName} says, ${msg.messageContent.replace("!speak", "")}`);
     const voices = speechSynthesis.getVoices();
     // Find and set the default voice based on name
     const defaultVoice = voices.filter(voice => voice.name === defaultVoiceName);
