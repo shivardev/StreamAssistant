@@ -9,14 +9,19 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-public class PostRequestExample {
+public class MessageProcessor {
 
     private Gson gson = new Gson();
-
-    public void makePostRequest(List<LiveChatMessage> messages) {
+    public void processEachMessage(List<LiveChatMessage> messages) {
+        for (LiveChatMessage message : messages) {
+            System.out.println(message.getMessage());
+        }
+    }
+    public void sendSpeakMsgs(List<LiveChatMessage> messages) {
         try {
             // URL of the endpoint
-            URL url = new URL("http://localhost:3000/takemsgs");
+            URL url = new URL("http://10.0.0.128:3000/takemsgs"); //Gaming PC
+            // URL url = new URL("http://10.0.0.236:3000/takemsgs"); //Streaming PC
 
             // Open a connection to the URL
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -44,6 +49,7 @@ public class PostRequestExample {
 
             connection.disconnect();
         } catch (Exception e) {
+            System.out.println("Error in sending messages to Go server.");
             e.printStackTrace();
         }
     }

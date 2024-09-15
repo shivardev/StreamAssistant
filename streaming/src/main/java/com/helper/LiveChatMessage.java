@@ -35,5 +35,7 @@ public class LiveChatMessage {
     public String getchatId() {
         return chatid;
     }
-
+    public String getMessage(){
+        return messageContent;
+    }
 }
