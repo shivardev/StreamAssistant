@@ -1,5 +1,5 @@
 var defaultVoiceName = 'Microsoft Neerja Online (Natural) - English (India)';
-const ws = new WebSocket("ws://10.0.0.128:3000/ws/123");
+const ws = new WebSocket("ws://10.0.0.236:3000/ws/123");
 let messageQueue = [];
 let synth = speechSynthesis, isSpeaking = false;
 function playNextMessage() {

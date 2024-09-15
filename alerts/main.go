@@ -44,11 +44,7 @@ func processQueue() {
 			speakQueue <- msg
 			// Send to WebSocket or further processing (e.g., for HTML display)
 		}
-		if strings.Contains(strings.ToLower(msg.MessageContent), "obs") {
-			// sendPostRequest(streamerBot, []byte(msg.MessageContent))
-		} else {
-			fmt.Println("Ignoring message:", msg.MessageContent)
-		}
+
 	}
 }
 

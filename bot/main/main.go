@@ -2,8 +2,11 @@ package main
 
 import (
 	"bot/utils"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -15,12 +18,8 @@ var (
 	lastChatID  string
 	page_cursor playwright.Page
 )
-var ignoredAuthors = map[string]struct{}{
-	"Nightbot":    {},
-	"YouTube":     {},
-	"BlazingBane": {},
-}
 var Users = hashset.New()
+var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane")
 
 func main() {
 	pw, err := playwright.Run()
@@ -33,7 +32,7 @@ func main() {
 	}
 	defaultContext := browser.Contexts()
 	page := defaultContext[0].Pages()[0]
-	page.Goto("https://www.youtube.com/watch?v=kiQHT_9y1FE")
+	page.Goto("https://www.youtube.com/channel/UCPFM_Ug62Ei3CUfvquG4KOg/live")
 	time.Sleep(2 * time.Second)
 	iframeLocator := page.Locator("iframe#chatframe")
 	if iframeExists, err := iframeLocator.Count(); err != nil {
@@ -51,7 +50,7 @@ func main() {
 	}
 	fmt.Printf("Iframe src attribute: %s\n", src)
 	page.Goto("https://www.youtube.com" + src)
-
+	page_cursor = page
 	for {
 		fetchNewMessages(page)
 		time.Sleep(2 * time.Second)
@@ -91,10 +90,7 @@ func fetchNewMessages(page playwright.Page) {
 					log.Printf("error creating LiveChatMessage: %v", err)
 					continue
 				}
-
-				if _, found := ignoredAuthors[chatContent.AuthorName]; !found {
-					newMessages = append(newMessages, *chatContent)
-				}
+				newMessages = append(newMessages, *chatContent)
 			}
 		}
 	}
@@ -123,30 +119,69 @@ func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage)
 	// send messages to alerts go app for speak commands and other stuff
 	if len(messages) > 0 {
 		fmt.Println("Sending messages to alerts go app")
-		utils.SendMsgsforAlerts(messages)
-		fmt.Print("Sent messages to bot go app")
+		SendMsgsforAlerts(messages)
 	}
 	// process bot messages
+	fmt.Println("Came here outside")
 	for _, message := range messages {
 		print(message.AuthorName)
-		if !Users.Contains(message.AuthorName) {
+		if !Users.Contains(message.AuthorName) && !ignoredUsers.Contains(message.AuthorName) {
 			Users.Add(message.AuthorName)
 			SendMsgToYoutube("Welcome home " + message.AuthorName)
 		}
-		if _, found := ignoredAuthors[message.AuthorName]; !found {
-			// Check if the message content matches any predefined types
+		if !ignoredUsers.Contains(message.AuthorName) {
 			lowerMessage := strings.ToLower(message.MessageContent)
-			for keyword, handler := range messageHandlers {
-				if strings.Contains(lowerMessage, keyword) {
-					handler()
-					break // Assuming only one handler is needed per message
+			if !ignoredUsers.Contains(message.AuthorName) {
+				for keyword, handler := range messageHandlers {
+					if strings.Contains(lowerMessage, keyword) {
+						handler()
+						break // Assuming only one handler is needed per message
+					}
 				}
 			}
 		} else {
-			fmt.Println("Text from Ignored Author")
+			fmt.Println("Text from Ignored Author", message.AuthorName)
 		}
 	}
+}
 
+func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
+	url := "http://10.0.0.236:3000/takemsgs" // Replace with your URL
+
+	// Create the request payload
+	payload := utils.RequestPayload{Messages: messages}
+	fmt.Println("Came here")
+
+	// Convert the payload to JSON
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error marshalling JSON:", err)
+		return
+	}
+	fmt.Println("Came here")
+	// Create the HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+	fmt.Println("Came here")
+
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json")
+	fmt.Println("Came here")
+
+	// Send the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Print the response
+	fmt.Println("Response Code:", resp.StatusCode)
 }
 
 var messageHandlers = map[string]func(){
