@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -19,13 +20,25 @@ var (
 	page_cursor playwright.Page
 )
 var Users = hashset.New()
-var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane")
+var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama")
 
 func main() {
+	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
+
+	// Start the command and don't wait for it to complete
+	err := cmd.Start()
+	if err != nil {
+		// Handle the error if you want to (optional)
+		// fmt.Println("Error starting batch script:", err)
+		return
+	}
+
+	fmt.Println("Output:")
 	pw, err := playwright.Run()
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
+	time.Sleep(5 * time.Second)
 	browser, err := pw.Chromium.ConnectOverCDP("http://127.0.0.1:8989")
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
