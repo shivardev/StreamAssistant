@@ -55,7 +55,6 @@ func processQueue() {
 		}
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
-			break
 		}
 
 	}
