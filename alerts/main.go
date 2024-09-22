@@ -39,7 +39,20 @@ func processQueue() {
 		// Receive messages from the queue (blocking operation)
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
-
+		if strings.Contains(msg.MessageContent, "frog") {
+			utils.DoAction(utils.GetAction(string(utils.Ironman)))
+		} else if strings.Contains(msg.MessageContent, "iron") {
+			utils.DoAction(utils.GetAction(string(utils.Ironman)))
+		} else if strings.Contains(msg.MessageContent, "bat") {
+			fmt.Println("Batman")
+			utils.DoAction(utils.GetAction(string(utils.Batman)))
+		} else if strings.Contains(msg.MessageContent, "joke") || strings.Contains(msg.MessageContent, "clown") {
+			utils.DoAction(utils.GetAction(string(utils.Clown)))
+		} else if strings.Contains(msg.MessageContent, "eye") {
+			utils.DoAction(utils.GetAction(string(utils.Eyes)))
+		} else if strings.Contains(msg.MessageContent, "thug") {
+			utils.DoAction(utils.GetAction(string(utils.Thug)))
+		}
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
 			break
@@ -66,20 +79,6 @@ func processSpeakQueue() {
 	for {
 		// Receive messages from the queue (blocking operation)
 		msg := <-speakQueue
-		if strings.Contains(msg.MessageContent, "frog") {
-			utils.DoAction(utils.GetAction(string(utils.Ironman)))
-		} else if strings.Contains(msg.MessageContent, "iron") {
-			utils.DoAction(utils.GetAction(string(utils.Ironman)))
-		} else if strings.Contains(msg.MessageContent, "bat") {
-			fmt.Println("Batman")
-			utils.DoAction(utils.GetAction(string(utils.Batman)))
-		} else if strings.Contains(msg.MessageContent, "joke") || strings.Contains(msg.MessageContent, "clown") {
-			utils.DoAction(utils.GetAction(string(utils.Clown)))
-		} else if strings.Contains(msg.MessageContent, "eye") {
-			utils.DoAction(utils.GetAction(string(utils.Eyes)))
-		} else if strings.Contains(msg.MessageContent, "thug") {
-			utils.DoAction(utils.GetAction(string(utils.Thug)))
-		}
 
 		if len(msg.MessageContent) > 6 && strings.HasPrefix(msg.MessageContent, "!speak") {
 			fmt.Println("Processing !speak message:", msg.MessageContent)
