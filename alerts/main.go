@@ -71,6 +71,7 @@ func processSpeakQueue() {
 		} else if strings.Contains(msg.MessageContent, "iron") {
 			utils.DoAction(utils.GetAction(string(utils.Ironman)))
 		} else if strings.Contains(msg.MessageContent, "bat") {
+			fmt.Println("Batman")
 			utils.DoAction(utils.GetAction(string(utils.Batman)))
 		} else if strings.Contains(msg.MessageContent, "joke") || strings.Contains(msg.MessageContent, "clown") {
 			utils.DoAction(utils.GetAction(string(utils.Clown)))
@@ -102,6 +103,7 @@ func processSpeakQueue() {
 	}
 }
 func main() {
+	utils.GetActionList()
 	go processQueue()
 	go processSpeakQueue()
 	app := fiber.New()

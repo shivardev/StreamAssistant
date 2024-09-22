@@ -27,22 +27,6 @@ const (
 	// Add more values as needed
 )
 
-var IronMan = []string{"ironman", "iron man", "iron"}
-var FrogList = []string{"frog"}
-var BatList = []string{"bat", "batman", "bat man"}
-var ClownList = []string{"clown", "joke"}
-var EyesList = []string{"eye"}
-var ThugList = []string{"thug", "cool"}
-
-var actionsMap = map[string][]string{
-	"iron":  IronMan,
-	"frog":  FrogList,
-	"bat":   BatList,
-	"clown": ClownList,
-	"eye":   EyesList,
-	"thug":  ThugList,
-}
-
 type Response struct {
 	Count   int      `json:"count"`
 	Actions []Action `json:"actions"`
