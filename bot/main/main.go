@@ -29,8 +29,6 @@ var messageHandlers = map[string]func(){}
 
 func main() {
 	utils.GetActionList()
-	utils.DoAction(utils.GetAction(string(utils.Eyes)))
-	return
 	initMessageHandlers()
 	utils.DataBaseConnection()
 	utils.InsertUser("alice", 100, "2023-01-15", "This is Alice's comment.")

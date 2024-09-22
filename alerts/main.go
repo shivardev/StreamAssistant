@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"myproject/utils"
 	"strings"
 	"sync"
 
@@ -39,10 +40,16 @@ func processQueue() {
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
 		// Process the message, only if it starts with "s"
-		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
+		for _, face := range utils.FaceActions {
+			if strings.Contains(msg.MessageContent, string(face.Name)) {
+				utils.DoAction(face)
+				break
+			}
+		}
 
+		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
-			// Send to WebSocket or further processing (e.g., for HTML display)
+			break
 		}
 
 	}
