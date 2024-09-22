@@ -28,7 +28,6 @@ var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi m
 var messageHandlers = map[string]func(){}
 
 func main() {
-	utils.GetActionList()
 	initMessageHandlers()
 	utils.DataBaseConnection()
 	utils.InsertUser("alice", 100, "2023-01-15", "This is Alice's comment.")
