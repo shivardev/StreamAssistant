@@ -39,13 +39,6 @@ func processQueue() {
 		// Receive messages from the queue (blocking operation)
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
-		// Process the message, only if it starts with "s"
-		for _, face := range utils.FaceActions {
-			if strings.Contains(msg.MessageContent, string(face.Name)) {
-				utils.DoAction(face)
-				break
-			}
-		}
 
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
@@ -73,6 +66,12 @@ func processSpeakQueue() {
 	for {
 		// Receive messages from the queue (blocking operation)
 		msg := <-speakQueue
+		for _, face := range utils.FaceActions {
+			if strings.Contains(msg.MessageContent, string(face.Name)) {
+				utils.DoAction(face)
+				break
+			}
+		}
 		if len(msg.MessageContent) > 6 && strings.HasPrefix(msg.MessageContent, "!speak") {
 			fmt.Println("Processing !speak message:", msg.MessageContent)
 			jsonMsg, err := json.Marshal(msg)
