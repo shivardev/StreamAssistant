@@ -40,7 +40,7 @@ func processQueue() {
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
 		if strings.Contains(msg.MessageContent, "frog") {
-			utils.DoAction(utils.GetAction(string(utils.Ironman)))
+			utils.DoAction(utils.GetAction(string(utils.Frog)))
 		} else if strings.Contains(msg.MessageContent, "iron") {
 			utils.DoAction(utils.GetAction(string(utils.Ironman)))
 		} else if strings.Contains(msg.MessageContent, "bat") {
