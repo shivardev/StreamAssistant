@@ -1,53 +1,51 @@
 {
     "cmds": [
+        "I only remember !speak,!points commands"
+    ],
+    " mama ": [
         " eyy babu pilichara?",
         " why are you disturbing me?",
         " neelo antha vedi unda? ",
         " Yes how many i help you?",
         "so you are the one Blazing Bane is talking about"
     ],
-    "mama": [
-        " eyy babu pilichara?",
-        " why are you disturbing me?",
-        " neelo antha vedi unda? ",
-        " Yes how many i help you?",
-        "so you are the one Blazing Bane is talking about"
-    ],
-    "op": [
+    " op ": [
         "that was cool isnt it",
         " its natural he is a pro  ",
         " well that was intense,isnt it?",
         "yes yes good play "
     ],
-    "nt": [
+    " nt ": [
         "that was cool isnt it",
         " its natural he is a pro  ",
         " well that was intense,isnt it?",
         "yes yes good play "
     ],
-    "hi": [
+    " hi ": [
         " Welcome, hope u enjoy the stream ",
         " Hello , anyway how are you ",
-        "Welcome to the stream "
+        "Welcome to the stream ",
+        "Welcome to the stream, Hope you have fun! ",
+        "Looks whos here!! A human...wow "
     ],
-    "sleep": [
+    " sleep": [
         "what kind of gamer gets sleep? ",
         "NOOB! gamers never sleep",
         "sleep? its too early for it"
     ],
-    "bye": [
+    " bye": [
         "leaving that soon? its just ",
         "NOOB! gamers never sleep ",
         "sleep? its too early for it ",
         "where are you going?"
     ],
-    "bf": [
+    " bf": [
         "da dun , dun da , dun dun ",
         "Battleifled 2042 is the best ",
         "Battlefield is all about multiplayer",
         "what battlefield?"
     ],
-    "food": [
+    " food ": [
         "Eppudu chusna Food ne na?",
         "Deiting chey ra eyy",
         "Vellu Food anthe padi sasthav",
@@ -56,9 +54,12 @@
         " Ever thought of dieting?",
         " the food is a limit resource dont eat that much"
     ],
-    "games": [
+    " games ": [
         "i play apex legends",
         "i play battlefiled",
         "i dont play Fortnight"
-    ]
+    ],
+    " blog": [
+        "BlazingBane has a blog! Check it out! - 🔗 https://blogs.blazingbane.com/"
+    ]   
 }

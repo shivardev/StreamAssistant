@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os/exec"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,34 +21,39 @@ import (
 var (
 	lastChatID  string
 	page_cursor playwright.Page
+	relangiData = utils.GetRelangiJSON()
 )
 var Users = hashset.New()
 var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama")
+var messageHandlers = map[string]func(){}
 
 func main() {
+	utils.GetActionList()
+	utils.DoAction(utils.GetAction(string(utils.Eyes)))
+	return
+	initMessageHandlers()
+	utils.DataBaseConnection()
+	utils.InsertUser("alice", 100, "2023-01-15", "This is Alice's comment.")
 	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
-
-	// Start the command and don't wait for it to complete
 	err := cmd.Start()
 	if err != nil {
-		// Handle the error if you want to (optional)
-		// fmt.Println("Error starting batch script:", err)
+		fmt.Println("Error starting batch script:", err)
 		return
 	}
-
-	fmt.Println("Output:")
+	fmt.Println("Chromium started")
+	time.Sleep(5 * time.Second)
+	// Get Relangi JSON
 	pw, err := playwright.Run()
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
-	time.Sleep(5 * time.Second)
 	browser, err := pw.Chromium.ConnectOverCDP("http://127.0.0.1:8989")
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
 	defaultContext := browser.Contexts()
 	page := defaultContext[0].Pages()[0]
-	page.Goto("https://www.youtube.com/channel/UCPFM_Ug62Ei3CUfvquG4KOg/live")
+	page.Goto(utils.StreamingLink)
 	time.Sleep(2 * time.Second)
 	iframeLocator := page.Locator("iframe#chatframe")
 	if iframeExists, err := iframeLocator.Count(); err != nil {
@@ -135,12 +143,31 @@ func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage)
 		SendMsgsforAlerts(messages)
 	}
 	// process bot messages
-	fmt.Println("Came here outside")
 	for _, message := range messages {
-		print(message.AuthorName)
+		// Add user to the Database
+		if !ignoredUsers.Contains(message.AuthorName) {
+			ProcessUser(message)
+		}
+		userPoints, err := utils.GetUserPoints(message.AuthorName)
+		if err != nil {
+			if userPoints%10 == 0 {
+				message := message.AuthorName + "Congralations for getting " + strconv.Itoa(userPoints) + " points"
+				SendMsgToYoutube(message)
+			}
+		}
+		println(message.AuthorName + " ->-> " + message.MessageContent)
+		if !ignoredUsers.Contains(message.AuthorName) && strings.HasPrefix(message.MessageContent, "!point") {
+			userPoints, err := utils.GetUserPoints(message.AuthorName)
+			if err != nil {
+				message := "You have " + strconv.Itoa(userPoints) + " points."
+				SendMsgToYoutube(message)
+				return
+			}
+		}
 		if !Users.Contains(message.AuthorName) && !ignoredUsers.Contains(message.AuthorName) {
 			Users.Add(message.AuthorName)
-			SendMsgToYoutube("Welcome home " + message.AuthorName)
+			SendMsgToYoutube(relangiData.Hi[rand.Intn(len(relangiData.Hi))] + " " + message.AuthorName)
+			return
 		}
 		if !ignoredUsers.Contains(message.AuthorName) {
 			lowerMessage := strings.ToLower(message.MessageContent)
@@ -152,18 +179,23 @@ func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage)
 					}
 				}
 			}
+			return
 		} else {
 			fmt.Println("Text from Ignored Author", message.AuthorName)
 		}
 	}
 }
-
+func ProcessUser(message utils.LiveChatMessage) {
+	err := utils.InsertOrUpdateUser(message.AuthorName, message.MessageContent)
+	if err != nil {
+		log.Printf("Error handling user %s: %v", message.AuthorName, err)
+	}
+}
 func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
 	url := "http://10.0.0.236:3000/takemsgs" // Replace with your URL
 
 	// Create the request payload
 	payload := utils.RequestPayload{Messages: messages}
-	fmt.Println("Came here")
 
 	// Convert the payload to JSON
 	jsonPayload, err := json.Marshal(payload)
@@ -171,18 +203,15 @@ func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
 		fmt.Println("Error marshalling JSON:", err)
 		return
 	}
-	fmt.Println("Came here")
 	// Create the HTTP request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return
 	}
-	fmt.Println("Came here")
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
-	fmt.Println("Came here")
 
 	// Send the request
 	client := &http.Client{}
@@ -192,23 +221,31 @@ func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
 		return
 	}
 	defer resp.Body.Close()
-
-	// Print the response
-	fmt.Println("Response Code:", resp.StatusCode)
 }
 
-var messageHandlers = map[string]func(){
-	"obs": func() {
-		SendMsgToYoutube(utils.OBS)
-	},
-	"blog": func() {
-		SendMsgToYoutube(utils.Blog)
-	},
-	"cmd": func() {
-		SendMsgToYoutube(utils.Cmds)
-	},
-}
+// var messageHandlers = map[string]func(){
+// 	"blog": func() {
+// 		SendMsgToYoutube(relangiData.Cmds[rand.Intn(len(relangiData.Blog))])
+// 	},
+// 	"cmd": func() {
+// 		SendMsgToYoutube(relangiData.Cmds[rand.Intn(len(relangiData.Cmds))])
+// 	},
+// }
 
+func initMessageHandlers() {
+	val := reflect.ValueOf(relangiData)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
+		fieldName := field.Tag.Get("json") // Get the JSON tag to use as the key
+		messageHandlers[fieldName] = func(f reflect.Value) func() {
+			return func() {
+				if f.Len() > 0 { // Check if there are any messages available
+					SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
+				}
+			}
+		}(val.Field(i))
+	}
+}
 func NewLiveChatMessage(element playwright.ElementHandle) (*utils.LiveChatMessage, error) {
 	chatID, err := element.GetAttribute("id")
 	if err != nil {

@@ -8,19 +8,15 @@ import (
 )
 
 func SendMsgsforAlerts(messages []LiveChatMessage) {
-	url := "http://" + raspberryPi + ":3000/takemsgs" // Replace with your URL
-
-	// Create the request payload
+	url := "http://" + raspberryPi + ":3000/takemsgs"
 	payload := RequestPayload{Messages: messages}
 
-	// Convert the payload to JSON
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		fmt.Println("Error marshalling JSON:", err)
 		return
 	}
 
-	// Create the HTTP request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		fmt.Println("Error creating request:", err)
@@ -29,7 +25,6 @@ func SendMsgsforAlerts(messages []LiveChatMessage) {
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Accept", "application/json")
 
-	// Send the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -38,8 +33,6 @@ func SendMsgsforAlerts(messages []LiveChatMessage) {
 	}
 	defer resp.Body.Close()
 
-	// Print the response
-	fmt.Println("Response Code:", resp.StatusCode)
 }
 
 func Contains(slice []string, item string) bool {
