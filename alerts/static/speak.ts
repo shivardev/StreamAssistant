@@ -5,6 +5,7 @@ interface Msg {
     messageContent: string;
 }
 var defaultVoiceName = 'Microsoft Neerja Online (Natural) - English (India)';
+// const ws = new WebSocket("ws://localhost:3000/ws/123");
 const ws = new WebSocket("ws://10.0.0.236:3000/ws/123");
 let messageQueue: Msg[] = [];
 let synth = speechSynthesis,
@@ -30,11 +31,11 @@ function playNextMessage() {
 ws.onmessage = function (event) {
     const msg: Msg = JSON.parse(event.data);
     console.log(msg);
-   
-    messageQueue.push(msg);
-    if (!isSpeaking) {
-        playNextMessage();
-    }
+    if('authorName' in msg)
+        messageQueue.push(msg);
+        if (!isSpeaking) {
+            playNextMessage();
+        }
 };
 ws.onopen = function (event) {
     console.log("WebSocket connection opened:", event);

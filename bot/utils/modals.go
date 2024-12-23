@@ -39,3 +39,11 @@ type User struct {
 
 // Dummy implementation for MessageProcessor
 type MessageProcessor struct{}
+
+// Relangi server Modals
+
+// hTTP post requst body struct
+
+type PostReq struct {
+	Msg string `json:"msg"`
+}

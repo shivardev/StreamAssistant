@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os/exec"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/emirpasic/gods/sets/hashset"
@@ -26,11 +24,41 @@ var (
 var Users = hashset.New()
 var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama")
 var messageHandlers = map[string]func(){}
+var urlsToMonitor = [2]string{"https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?prettyPrint=false", "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false"}
 
+func handleRequests(w http.ResponseWriter, r *http.Request) {
+	// Handle your requests here
+	switch r.Method {
+	case "GET":
+		// Respond to a GET request (you can extend this to serve dynamic data)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Server is running. Visit /start to begin Chromium automation.\n")
+	case "POST":
+		var msg utils.PostReq
+		err := json.NewDecoder(r.Body).Decode(&msg)
+		if err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Check if the message is not empty and process it
+		if msg.Msg != "" {
+			// Call the SendMsgToYoutube function to process the message
+			SendMsgToYoutube(msg.Msg)
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "Message processed: %s", msg.Msg)
+		} else {
+			// Return an error if no message was provided
+			http.Error(w, "No message provided", http.StatusBadRequest)
+		}
+	default:
+		http.Error(w, "Unsupported HTTP method", http.StatusMethodNotAllowed)
+	}
+}
 func main() {
+	// Set up the HTTP server
 	initMessageHandlers()
-	utils.DataBaseConnection()
-	utils.InsertUser("alice", 100, "2023-01-15", "This is Alice's comment.")
 	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
 	err := cmd.Start()
 	if err != nil {
@@ -38,7 +66,7 @@ func main() {
 		return
 	}
 	fmt.Println("Chromium started")
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	// Get Relangi JSON
 	pw, err := playwright.Run()
 	if err != nil {
@@ -69,61 +97,68 @@ func main() {
 	fmt.Printf("Iframe src attribute: %s\n", src)
 	page.Goto("https://www.youtube.com" + src)
 	page_cursor = page
-	for {
-		fetchNewMessages(page)
-		time.Sleep(2 * time.Second)
-	}
-}
-func fetchNewMessages(page playwright.Page) {
-	elements, err := page.QuerySelectorAll("yt-live-chat-text-message-renderer")
+	// Start Playwright instance
+	utils.RunNodeScript()
+	// HTTP
+	http.HandleFunc("/", handleRequests)
+
+	fmt.Println("Starting HTTP server on port 8181...")
+	http.ListenAndServe(":8181", nil)
 	if err != nil {
-		log.Printf("error querying chat messages: %v", err)
-		return
-	}
-
-	newMessages := []utils.LiveChatMessage{}
-	foundLastChatID := false
-
-	for _, element := range elements {
-		messageID, err := element.GetAttribute("id")
-		if err != nil {
-			log.Printf("error getting attribute 'id': %v", err)
-			continue
-		}
-
-		if lastChatID == "" {
-			chatContent, err := NewLiveChatMessage(element)
-			if err != nil {
-				log.Printf("error creating LiveChatMessage: %v", err)
-				continue
-			}
-			newMessages = append(newMessages, *chatContent)
-			lastChatID = messageID
-		} else {
-			if messageID == lastChatID {
-				foundLastChatID = true
-			} else if foundLastChatID {
-				chatContent, err := NewLiveChatMessage(element)
-				if err != nil {
-					log.Printf("error creating LiveChatMessage: %v", err)
-					continue
-				}
-				newMessages = append(newMessages, *chatContent)
-			}
-		}
-	}
-
-	if len(elements) > 0 {
-		lastChatID, _ = elements[len(elements)-1].GetAttribute("id")
-	} else {
-		fmt.Println("No new messages found")
-	}
-
-	if len(newMessages) > 0 {
-		msgProcessor := MessageProcessor{}
-		msgProcessor.processEachMessage(newMessages)
+		log.Fatalf("Error starting HTTP server: %v", err)
 	}
 }
+
+// func fetchNewMessages(page playwright.Page) {
+// 	elements, err := page.QuerySelectorAll("yt-live-chat-text-message-renderer")
+// 	if err != nil {
+// 		log.Printf("error querying chat messages: %v", err)
+// 		return
+// 	}
+
+// 	newMessages := []utils.LiveChatMessage{}
+// 	foundLastChatID := false
+
+// 	for _, element := range elements {
+// 		messageID, err := element.GetAttribute("id")
+// 		if err != nil {
+// 			log.Printf("error getting attribute 'id': %v", err)
+// 			continue
+// 		}
+
+// 		if lastChatID == "" {
+// 			chatContent, err := NewLiveChatMessage(element)
+// 			if err != nil {
+// 				log.Printf("error creating LiveChatMessage: %v", err)
+// 				continue
+// 			}
+// 			newMessages = append(newMessages, *chatContent)
+// 			lastChatID = messageID
+// 		} else {
+// 			if messageID == lastChatID {
+// 				foundLastChatID = true
+// 			} else if foundLastChatID {
+// 				chatContent, err := NewLiveChatMessage(element)
+// 				if err != nil {
+// 					log.Printf("error creating LiveChatMessage: %v", err)
+// 					continue
+// 				}
+// 				newMessages = append(newMessages, *chatContent)
+// 			}
+// 		}
+// 	}
+
+// 	if len(elements) > 0 {
+// 		lastChatID, _ = elements[len(elements)-1].GetAttribute("id")
+// 	} else {
+// 		fmt.Println("No new messages found")
+// 	}
+
+// 	if len(newMessages) > 0 {
+// 		msgProcessor := MessageProcessor{}
+// 		msgProcessor.processEachMessage(newMessages)
+// 	}
+// }
 
 func SendMsgToYoutube(content string) {
 	page_cursor.Locator("div#input").PressSequentially(content)
@@ -132,62 +167,65 @@ func SendMsgToYoutube(content string) {
 
 type MessageProcessor struct{}
 
-func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage) {
+// func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage) {
 
-	// send messages to alerts go app for speak commands and other stuff
-	if len(messages) > 0 {
-		fmt.Println("Sending messages to alerts go app")
-		SendMsgsforAlerts(messages)
-	}
-	// process bot messages
-	for _, message := range messages {
-		// Add user to the Database
-		if !ignoredUsers.Contains(message.AuthorName) {
-			ProcessUser(message)
-		}
-		userPoints, err := utils.GetUserPoints(message.AuthorName)
-		if err != nil {
-			if userPoints%10 == 0 {
-				message := message.AuthorName + "Congralations for getting " + strconv.Itoa(userPoints) + " points"
-				SendMsgToYoutube(message)
-			}
-		}
-		println(message.AuthorName + " ->-> " + message.MessageContent)
-		if !ignoredUsers.Contains(message.AuthorName) && strings.HasPrefix(message.MessageContent, "!point") {
-			userPoints, err := utils.GetUserPoints(message.AuthorName)
-			if err != nil {
-				message := "You have " + strconv.Itoa(userPoints) + " points."
-				SendMsgToYoutube(message)
-				return
-			}
-		}
-		if !Users.Contains(message.AuthorName) && !ignoredUsers.Contains(message.AuthorName) {
-			Users.Add(message.AuthorName)
-			SendMsgToYoutube(relangiData.Hi[rand.Intn(len(relangiData.Hi))] + " " + message.AuthorName)
-			return
-		}
-		if !ignoredUsers.Contains(message.AuthorName) {
-			lowerMessage := strings.ToLower(message.MessageContent)
-			if !ignoredUsers.Contains(message.AuthorName) {
-				for keyword, handler := range messageHandlers {
-					if strings.Contains(lowerMessage, keyword) {
-						handler()
-						break // Assuming only one handler is needed per message
-					}
-				}
-			}
-			return
-		} else {
-			fmt.Println("Text from Ignored Author", message.AuthorName)
-		}
-	}
-}
-func ProcessUser(message utils.LiveChatMessage) {
-	err := utils.InsertOrUpdateUser(message.AuthorName, message.MessageContent)
-	if err != nil {
-		log.Printf("Error handling user %s: %v", message.AuthorName, err)
-	}
-}
+// 	// send messages to alerts go app for speak commands and other stuff
+// 	if len(messages) > 0 {
+// 		fmt.Println("Sending messages to alerts go app")
+// 		SendMsgsforAlerts(messages)
+// 	}
+// 	// process bot messages
+// 	for _, message := range messages {
+// 		go func(message utils.LiveChatMessage) {
+// 			// Add user to the Database
+// 			if !ignoredUsers.Contains(message.AuthorName) {
+// 				ProcessUser(message)
+// 			}
+
+// 			if err != nil {
+// 				if userPoints%10 == 0 {
+// 					message := message.AuthorName + "Congregations for getting " + strconv.Itoa(userPoints) + " points"
+// 					SendMsgToYoutube(message)
+// 				}
+// 			}
+// 			println(message.AuthorName + " ->-> " + message.MessageContent)
+// 			if !ignoredUsers.Contains(message.AuthorName) && strings.HasPrefix(message.MessageContent, "!point") {
+// 				userPoints, err := utils.GetUserPoints(message.AuthorName)
+// 				if err != nil {
+// 					message := "You have " + strconv.Itoa(userPoints) + " points."
+// 					SendMsgToYoutube(message)
+// 					return
+// 				}
+// 			}
+// 			if !Users.Contains(message.AuthorName) && !ignoredUsers.Contains(message.AuthorName) {
+// 				Users.Add(message.AuthorName)
+// 				SendMsgToYoutube(relangiData.Hi[rand.Intn(len(relangiData.Hi))] + " " + message.AuthorName)
+// 				return
+// 			}
+// 			if !ignoredUsers.Contains(message.AuthorName) {
+// 				lowerMessage := strings.ToLower(message.MessageContent)
+// 				if !ignoredUsers.Contains(message.AuthorName) {
+// 					for keyword, handler := range messageHandlers {
+// 						if strings.Contains(lowerMessage, keyword) {
+// 							handler()
+// 							break // Assuming only one handler is needed per message
+// 						}
+// 					}
+// 				}
+// 				return
+// 			} else {
+// 				fmt.Println("Text from Ignored Author", message.AuthorName)
+// 			}
+// 		}(message)
+// 	}
+// }
+
+//	func ProcessUser(message utils.LiveChatMessage) {
+//		err := utils.InsertOrUpdateUser(message.AuthorName, message.MessageContent)
+//		if err != nil {
+//			log.Printf("Error handling user %s: %v", message.AuthorName, err)
+//		}
+//	}
 func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
 	url := "http://10.0.0.236:3000/takemsgs" // Replace with your URL
 
@@ -220,23 +258,14 @@ func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
 	defer resp.Body.Close()
 }
 
-// var messageHandlers = map[string]func(){
-// 	"blog": func() {
-// 		SendMsgToYoutube(relangiData.Cmds[rand.Intn(len(relangiData.Blog))])
-// 	},
-// 	"cmd": func() {
-// 		SendMsgToYoutube(relangiData.Cmds[rand.Intn(len(relangiData.Cmds))])
-// 	},
-// }
-
 func initMessageHandlers() {
 	val := reflect.ValueOf(relangiData)
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Type().Field(i)
-		fieldName := field.Tag.Get("json") // Get the JSON tag to use as the key
+		fieldName := field.Tag.Get("json")
 		messageHandlers[fieldName] = func(f reflect.Value) func() {
 			return func() {
-				if f.Len() > 0 { // Check if there are any messages available
+				if f.Len() > 0 {
 					SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
 				}
 			}

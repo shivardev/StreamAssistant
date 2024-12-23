@@ -12,31 +12,29 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type ChatMessage struct {
-	ChatID         string `json:"chatid"`
-	AuthorName     string `json:"authorName"`
-	AuthorPhotoURL string `json:"authorPhotoUrl"`
-	MessageContent string `json:"messageContent"`
-}
-
 type MessagePayload struct {
-	Messages []ChatMessage `json:"messages"`
+	Messages []utils.ChatMessage `json:"messages"`
+}
+type GifsPayload struct {
+	GifUrl string `json:"url"`
 }
 
-var messageQueue chan ChatMessage
-var speakQueue chan ChatMessage
+var messageQueue chan utils.ChatMessage
+var speakQueue chan utils.ChatMessage
+var userDatabaseQueue chan utils.ChatMessage
+var gifQueue chan GifsPayload
 var connections = make(map[*websocket.Conn]bool)
 var mu sync.Mutex // To ensure thread-safety
 
 func init() {
-	// Initialize the message queue channel with a buffer size
-	messageQueue = make(chan ChatMessage, 100)
-	speakQueue = make(chan ChatMessage, 100)
+	messageQueue = make(chan utils.ChatMessage, 100)
+	speakQueue = make(chan utils.ChatMessage, 100)
+	gifQueue = make(chan GifsPayload, 100)
+	userDatabaseQueue = make(chan utils.ChatMessage, 100)
 }
 
-func processQueue() {
+func processMsgQueue() {
 	for {
-		// Receive messages from the queue (blocking operation)
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
 		if strings.Contains(msg.MessageContent, "frog") {
@@ -56,7 +54,7 @@ func processQueue() {
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
 		}
-
+		userDatabaseQueue <- msg
 	}
 }
 
@@ -76,7 +74,6 @@ type Response struct {
 
 func processSpeakQueue() {
 	for {
-		// Receive messages from the queue (blocking operation)
 		msg := <-speakQueue
 
 		if len(msg.MessageContent) > 6 && strings.HasPrefix(msg.MessageContent, "!speak") {
@@ -100,10 +97,34 @@ func processSpeakQueue() {
 
 	}
 }
+
+// For each User youtube comment msg, will be handling the databases and if the points are a multiple of 10, 20 then will trigger a congrats msg to youtube.
+// also processes to store the information in Sqlite db.
+func processUserPoints() {
+	for {
+
+		msg := <-userDatabaseQueue
+		fmt.Println("Processing User points")
+		utils.InsertOrUpdateUser(msg)
+		user, err := utils.FetchUser(msg)
+		if err != nil {
+			fmt.Println("Error fetching user: ", err)
+			continue
+		}
+		fmt.Println("User: ", user)
+		if user.Points == 1 {
+
+		} else if user.Points == 10 {
+
+		}
+	}
+}
 func main() {
 	utils.GetActionList()
-	go processQueue()
+	utils.DataBaseConnection()
+	go processMsgQueue()
 	go processSpeakQueue()
+	go processUserPoints()
 	app := fiber.New()
 
 	app.Static("/", "./static")
@@ -122,26 +143,76 @@ func main() {
 		}
 		return fiber.ErrUpgradeRequired
 	})
+	app.Post("/takestats", func(c *fiber.Ctx) error {
+		// will takes current stats from youtube live stream contains live likes and viewer count of the stream.
+		var statPayload utils.StatsPayload
 
+		if err := c.BodyParser(&statPayload); err != nil {
+			fmt.Println("Error parsing body:", err)
+			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
+		}
+		fmt.Println(statPayload)
+		likeCompare := statPayload.Stats.Likes - statPayload.Stats.PreviousLikes
+		if statPayload.Stats.ShouldCongratulate {
+			utils.SendMsgToYoutube(fmt.Sprintf("Congrats! Stream has reached %d likes", statPayload.Stats.MaxLikes))
+		} else if likeCompare > 0 {
+			fmt.Println("Someone liked the stream!")
+			utils.SendMsgToYoutube(fmt.Sprint("Someone liked the stream!"))
+		} else if likeCompare < 0 {
+			fmt.Println("Someone disliked the stream!")
+			utils.SendMsgToYoutube(fmt.Sprint("Someone removed a like!"))
+		}
+		return c.Status(fiber.StatusOK).SendString("Stats received successfully")
+	})
 	app.Post("/takemsgs", func(c *fiber.Ctx) error {
-		// Create a struct to hold the incoming data
+		// will takes msg from youtube playwright instance and proceses it as msgs are an array, each will will be deployed in a go
 		var chatMessages MessagePayload
 
-		// Parse the incoming JSON request body into the struct
 		if err := c.BodyParser(&chatMessages); err != nil {
 			fmt.Println("Error parsing body:", err)
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
 		}
-
 		go func() {
 			for _, msg := range chatMessages.Messages {
-				messageQueue <- msg // Enqueue without filtering
+				messageQueue <- msg
 			}
 		}()
-		// Return success response
+
 		return c.Status(fiber.StatusOK).SendString("Messages received successfully")
 	})
+	app.Post("/takegifs", func(c *fiber.Ctx) error {
+		var eachGif GifsPayload
 
+		if err := c.BodyParser(&eachGif); err != nil {
+			fmt.Println("Error parsing body:", err)
+			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
+		}
+		fmt.Println(eachGif)
+		go func() {
+			gifQueue <- eachGif
+		}()
+
+		return c.Status(fiber.StatusOK).SendString("Gif received successfully")
+	})
+	type InstagramNotification struct {
+		Platform string `json:"platform"`
+		UserName string `json:"userName"`
+		Action   string `json:"action"`
+	}
+	app.Post("/insta", func(c *fiber.Ctx) error {
+		var notification InstagramNotification
+
+		// Parse the JSON body
+		if err := json.Unmarshal(c.Body(), &notification); err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid JSON")
+		}
+		// Print each key
+		fmt.Println("Platform:", notification.Platform, "UserName:", notification.UserName, "Action:", notification.Action)
+		if notification.Platform == "instagram" {
+
+		}
+		return c.Status(fiber.StatusOK).SendString("Notification received successfully")
+	})
 	app.Get("/ws/:id", websocket.New(func(c *websocket.Conn) {
 		mu.Lock()
 		connections[c] = true // Track the connection
@@ -173,6 +244,5 @@ func main() {
 			}
 		}
 	}))
-
 	log.Fatal(app.Listen(":3000"))
 }

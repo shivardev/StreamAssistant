@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os/exec"
+	"syscall"
 )
 
 func SendMsgsforAlerts(messages []LiveChatMessage) {
@@ -42,4 +45,20 @@ func Contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func RunNodeScript() {
+	workingDir := `D:\coding\streamAssistant\nodePlaywrite\src`
+
+	cmd := exec.Command("node", "index.js")
+	cmd.Dir = workingDir
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	err := cmd.Start()
+	if err != nil {
+		log.Printf("Error starting Node.js script: %v\n", err)
+		return
+	}
+
+	log.Println("Playwright script is running in the background...")
+
 }

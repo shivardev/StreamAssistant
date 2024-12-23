@@ -1,10 +1,12 @@
 var defaultVoiceName = 'Microsoft Neerja Online (Natural) - English (India)';
+// const ws = new WebSocket("ws://localhost:3000/ws/123");
 const ws = new WebSocket("ws://10.0.0.236:3000/ws/123");
 let messageQueue = [];
 let synth = speechSynthesis, isSpeaking = false;
 function playNextMessage() {
     if (messageQueue.length > 0) {
         const nextMessage = messageQueue.shift();
+        console.log(nextMessage);
         const imgElement = document.getElementById("alert-user-icon");
         const userNameElement = document.getElementById("alert-user-name");
         imgElement.src = nextMessage.authorPhotoUrl;
@@ -21,7 +23,8 @@ function playNextMessage() {
 ws.onmessage = function (event) {
     const msg = JSON.parse(event.data);
     console.log(msg);
-    messageQueue.push(msg);
+    if ('authorName' in msg)
+        messageQueue.push(msg);
     if (!isSpeaking) {
         playNextMessage();
     }
