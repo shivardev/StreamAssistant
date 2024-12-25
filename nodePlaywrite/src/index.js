@@ -34,7 +34,7 @@ const constants_1 = require("./utils/constants");
         "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false",
     ];
     // Launch the browser
-    const browser = yield playwright_1.chromium.launch({ headless: false });
+    const browser = yield playwright_1.chromium.connectOverCDP("http://127.0.0.1:8989");
     const page = yield browser.newPage();
     function findActionByKey(arr, key) {
         return arr.find((action) => action[key] !== undefined) || null;

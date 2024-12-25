@@ -30,7 +30,8 @@ import { msgsPayload } from "./utils/interfaces";
   ];
   
   // Launch the browser
-  const browser = await chromium.launch({ headless: false });
+
+ const browser = await chromium.connectOverCDP("http://127.0.0.1:8989");
   const page = await browser.newPage();
   function findActionByKey(arr: any, key: string): any | null {
     return arr.find((action: any) => action[key] !== undefined) || null;
