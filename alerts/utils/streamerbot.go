@@ -24,9 +24,17 @@ const (
 	Clown   FaceEnum = "clown"
 	Eyes    FaceEnum = "eyes"
 	Frog    FaceEnum = "frog"
-	// Add more values as needed
+	Likes   FaceEnum = "Likes" // Likes action to map streambot likes action
+	Cry     FaceEnum = "Cry"
 )
 
+//	{
+//		"id": "aedb1356-a9c7-4a0c-8f8a-030d7f24612d",
+//		"name": "Likes",
+//		"group": "",
+//		"enabled": true,
+//		"subactions_count": 6
+//	  },
 type Response struct {
 	Count   int      `json:"count"`
 	Actions []Action `json:"actions"`

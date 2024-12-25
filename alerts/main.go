@@ -156,11 +156,13 @@ func main() {
 		if statPayload.Stats.ShouldCongratulate {
 			utils.SendMsgToYoutube(fmt.Sprintf("Congrats! Stream has reached %d likes", statPayload.Stats.MaxLikes))
 		} else if likeCompare > 0 {
-			fmt.Println("Someone liked the stream!")
-			utils.SendMsgToYoutube(fmt.Sprint("Someone liked the stream!"))
+			utils.DoAction(utils.GetAction(string(utils.Likes)))
+			fmt.Println("Thanks for liking the stream!")
+			utils.SendMsgToYoutube(fmt.Sprint("Thanks for liking the stream!"))
 		} else if likeCompare < 0 {
 			fmt.Println("Someone disliked the stream!")
-			utils.SendMsgToYoutube(fmt.Sprint("Someone removed a like!"))
+			utils.DoAction(utils.GetAction(string(utils.Cry)))
+			// utils.SendMsgToYoutube(fmt.Sprint("Someone removed a like!"))
 		}
 		return c.Status(fiber.StatusOK).SendString("Stats received successfully")
 	})
