@@ -20,7 +20,6 @@ import { msgsPayload } from "./utils/interfaces";
         console.error("Error sending request:", error);
       });
 
-    console.log("Post request initiated");
   };
 
   let globalMaxLikeCount = 0;
@@ -29,8 +28,9 @@ import { msgsPayload } from "./utils/interfaces";
     "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?prettyPrint=false",
     "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false",
   ];
+  
   // Launch the browser
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: false });
   const page = await browser.newPage();
   function findActionByKey(arr: any, key: string): any | null {
     return arr.find((action: any) => action[key] !== undefined) || null;
@@ -52,7 +52,7 @@ import { msgsPayload } from "./utils/interfaces";
 
   page.on("response", async (response) => {
     const url = response.url();
-
+    console.log(url)
     if (urls.includes(url)) {
       if (urls.indexOf(url) == 1) {
         try {
@@ -87,6 +87,7 @@ import { msgsPayload } from "./utils/interfaces";
           console.log("Response body could not be parsed as JSON.", error);
         }
       } else {
+        console.log("mostly chat URL")
         try {
           const json: CommentObj = await response.json();
           const actions =
@@ -129,6 +130,8 @@ import { msgsPayload } from "./utils/interfaces";
               msgsPayload.push(payload);
             }
             sendPostRequest(API_URLS.msgs, { messages: msgsPayload });
+          }else{
+            console.log('noactions')
           }
         } catch (error) {
           console.log("Response body could not be parsed as JSON.");

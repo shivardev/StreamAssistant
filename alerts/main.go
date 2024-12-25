@@ -151,7 +151,7 @@ func main() {
 			fmt.Println("Error parsing body:", err)
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
 		}
-		fmt.Println(statPayload)
+
 		likeCompare := statPayload.Stats.Likes - statPayload.Stats.PreviousLikes
 		if statPayload.Stats.ShouldCongratulate {
 			utils.SendMsgToYoutube(fmt.Sprintf("Congrats! Stream has reached %d likes", statPayload.Stats.MaxLikes))
@@ -167,6 +167,7 @@ func main() {
 		return c.Status(fiber.StatusOK).SendString("Stats received successfully")
 	})
 	app.Post("/takemsgs", func(c *fiber.Ctx) error {
+		fmt.Println("Processing messages")
 		// will takes msg from youtube playwright instance and proceses it as msgs are an array, each will will be deployed in a go
 		var chatMessages MessagePayload
 
@@ -176,6 +177,7 @@ func main() {
 		}
 		go func() {
 			for _, msg := range chatMessages.Messages {
+				fmt.Println(msg.MessageContent)
 				messageQueue <- msg
 			}
 		}()

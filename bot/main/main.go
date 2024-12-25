@@ -2,7 +2,6 @@ package main
 
 import (
 	"bot/utils"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -166,97 +165,6 @@ func SendMsgToYoutube(content string) {
 }
 
 type MessageProcessor struct{}
-
-// func (mp *MessageProcessor) processEachMessage(messages []utils.LiveChatMessage) {
-
-// 	// send messages to alerts go app for speak commands and other stuff
-// 	if len(messages) > 0 {
-// 		fmt.Println("Sending messages to alerts go app")
-// 		SendMsgsforAlerts(messages)
-// 	}
-// 	// process bot messages
-// 	for _, message := range messages {
-// 		go func(message utils.LiveChatMessage) {
-// 			// Add user to the Database
-// 			if !ignoredUsers.Contains(message.AuthorName) {
-// 				ProcessUser(message)
-// 			}
-
-// 			if err != nil {
-// 				if userPoints%10 == 0 {
-// 					message := message.AuthorName + "Congregations for getting " + strconv.Itoa(userPoints) + " points"
-// 					SendMsgToYoutube(message)
-// 				}
-// 			}
-// 			println(message.AuthorName + " ->-> " + message.MessageContent)
-// 			if !ignoredUsers.Contains(message.AuthorName) && strings.HasPrefix(message.MessageContent, "!point") {
-// 				userPoints, err := utils.GetUserPoints(message.AuthorName)
-// 				if err != nil {
-// 					message := "You have " + strconv.Itoa(userPoints) + " points."
-// 					SendMsgToYoutube(message)
-// 					return
-// 				}
-// 			}
-// 			if !Users.Contains(message.AuthorName) && !ignoredUsers.Contains(message.AuthorName) {
-// 				Users.Add(message.AuthorName)
-// 				SendMsgToYoutube(relangiData.Hi[rand.Intn(len(relangiData.Hi))] + " " + message.AuthorName)
-// 				return
-// 			}
-// 			if !ignoredUsers.Contains(message.AuthorName) {
-// 				lowerMessage := strings.ToLower(message.MessageContent)
-// 				if !ignoredUsers.Contains(message.AuthorName) {
-// 					for keyword, handler := range messageHandlers {
-// 						if strings.Contains(lowerMessage, keyword) {
-// 							handler()
-// 							break // Assuming only one handler is needed per message
-// 						}
-// 					}
-// 				}
-// 				return
-// 			} else {
-// 				fmt.Println("Text from Ignored Author", message.AuthorName)
-// 			}
-// 		}(message)
-// 	}
-// }
-
-//	func ProcessUser(message utils.LiveChatMessage) {
-//		err := utils.InsertOrUpdateUser(message.AuthorName, message.MessageContent)
-//		if err != nil {
-//			log.Printf("Error handling user %s: %v", message.AuthorName, err)
-//		}
-//	}
-func SendMsgsforAlerts(messages []utils.LiveChatMessage) {
-	url := "http://10.0.0.236:3000/takemsgs" // Replace with your URL
-
-	// Create the request payload
-	payload := utils.RequestPayload{Messages: messages}
-
-	// Convert the payload to JSON
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return
-	}
-	// Create the HTTP request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("Accept", "application/json")
-
-	// Send the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer resp.Body.Close()
-}
 
 func initMessageHandlers() {
 	val := reflect.ValueOf(relangiData)

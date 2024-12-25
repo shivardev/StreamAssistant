@@ -26,7 +26,6 @@ const constants_1 = require("./utils/constants");
             .catch((error) => {
             console.error("Error sending request:", error);
         });
-        console.log("Post request initiated");
     };
     let globalMaxLikeCount = 0;
     let previousLikeCount = 0;
@@ -35,7 +34,7 @@ const constants_1 = require("./utils/constants");
         "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false",
     ];
     // Launch the browser
-    const browser = yield playwright_1.chromium.launch({ headless: true });
+    const browser = yield playwright_1.chromium.launch({ headless: false });
     const page = yield browser.newPage();
     function findActionByKey(arr, key) {
         return arr.find((action) => action[key] !== undefined) || null;
@@ -54,6 +53,7 @@ const constants_1 = require("./utils/constants");
     // Intercept network responses
     page.on("response", (response) => __awaiter(void 0, void 0, void 0, function* () {
         const url = response.url();
+        console.log(url);
         if (urls.includes(url)) {
             if (urls.indexOf(url) == 1) {
                 try {
@@ -83,6 +83,7 @@ const constants_1 = require("./utils/constants");
                 }
             }
             else {
+                console.log("mostly chat URL");
                 try {
                     const json = yield response.json();
                     const actions = json.continuationContents.liveChatContinuation.actions;
@@ -122,6 +123,9 @@ const constants_1 = require("./utils/constants");
                             msgsPayload.push(payload);
                         }
                         sendPostRequest(constants_1.API_URLS.msgs, { messages: msgsPayload });
+                    }
+                    else {
+                        console.log('noactions');
                     }
                 }
                 catch (error) {
