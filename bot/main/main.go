@@ -66,7 +66,9 @@ func main() {
 	}
 	fmt.Println("Chromium started")
 	time.Sleep(2 * time.Second)
-	// Get Relangi JSON
+	// Start Playwright instance
+	utils.RunNodeScript()
+	// connect to playwright which has the youtube open by now
 	pw, err := playwright.Run()
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
@@ -75,8 +77,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
-	defaultContext := browser.Contexts()
-	page := defaultContext[0].Pages()[0]
+	// defaultContext := browser.Contexts()
+	// page := defaultContext[0].Pages()[0] // get the first page
+	page, err := browser.Contexts()[0].NewPage() // get the first page
 	page.Goto(utils.StreamingLink)
 	time.Sleep(2 * time.Second)
 	iframeLocator := page.Locator("iframe#chatframe")
@@ -96,8 +99,6 @@ func main() {
 	fmt.Printf("Iframe src attribute: %s\n", src)
 	page.Goto("https://www.youtube.com" + src)
 	page_cursor = page
-	// Start Playwright instance
-	utils.RunNodeScript()
 	// HTTP
 	http.HandleFunc("/", handleRequests)
 

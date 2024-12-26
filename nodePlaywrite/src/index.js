@@ -35,7 +35,8 @@ const constants_1 = require("./utils/constants");
     ];
     // Launch the browser
     const browser = yield playwright_1.chromium.connectOverCDP("http://127.0.0.1:8989");
-    const page = yield browser.newPage();
+    const defaultContext = browser.contexts()[0];
+    const page = defaultContext.pages()[0];
     function findActionByKey(arr, key) {
         return arr.find((action) => action[key] !== undefined) || null;
     }
@@ -125,7 +126,7 @@ const constants_1 = require("./utils/constants");
                         sendPostRequest(constants_1.API_URLS.msgs, { messages: msgsPayload });
                     }
                     else {
-                        console.log('noactions');
+                        console.log("noactions");
                     }
                 }
                 catch (error) {

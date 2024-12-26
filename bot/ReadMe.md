@@ -6,5 +6,7 @@
   ```
 - open a terminal in database folder
 
-
-
+Build the applicaiton bot
+```bash
+go build -o bot
+```

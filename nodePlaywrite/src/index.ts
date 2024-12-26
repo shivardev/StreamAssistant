@@ -28,11 +28,12 @@ import { msgsPayload } from "./utils/interfaces";
     "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?prettyPrint=false",
     "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false",
   ];
-  
+
   // Launch the browser
 
- const browser = await chromium.connectOverCDP("http://127.0.0.1:8989");
-  const page = await browser.newPage();
+  const browser = await chromium.connectOverCDP("http://127.0.0.1:8989");
+  const defaultContext = browser.contexts()[0];
+  const page = defaultContext.pages()[0];
   function findActionByKey(arr: any, key: string): any | null {
     return arr.find((action: any) => action[key] !== undefined) || null;
   }
@@ -53,7 +54,7 @@ import { msgsPayload } from "./utils/interfaces";
 
   page.on("response", async (response) => {
     const url = response.url();
-    console.log(url)
+    console.log(url);
     if (urls.includes(url)) {
       if (urls.indexOf(url) == 1) {
         try {
@@ -88,7 +89,7 @@ import { msgsPayload } from "./utils/interfaces";
           console.log("Response body could not be parsed as JSON.", error);
         }
       } else {
-        console.log("mostly chat URL")
+        console.log("mostly chat URL");
         try {
           const json: CommentObj = await response.json();
           const actions =
@@ -131,8 +132,8 @@ import { msgsPayload } from "./utils/interfaces";
               msgsPayload.push(payload);
             }
             sendPostRequest(API_URLS.msgs, { messages: msgsPayload });
-          }else{
-            console.log('noactions')
+          } else {
+            console.log("noactions");
           }
         } catch (error) {
           console.log("Response body could not be parsed as JSON.");
