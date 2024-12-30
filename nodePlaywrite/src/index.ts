@@ -54,7 +54,7 @@ import { msgsPayload } from "./utils/interfaces";
 
   page.on("response", async (response) => {
     const url = response.url();
-    console.log(url);
+    console.log(url)
     if (urls.includes(url)) {
       if (urls.indexOf(url) == 1) {
         try {
@@ -89,7 +89,7 @@ import { msgsPayload } from "./utils/interfaces";
           console.log("Response body could not be parsed as JSON.", error);
         }
       } else {
-        console.log("mostly chat URL");
+        console.log("mostly chat URL")
         try {
           const json: CommentObj = await response.json();
           const actions =

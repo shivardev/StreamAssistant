@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os/exec"
-	"reflect"
 	"time"
 
 	"github.com/emirpasic/gods/sets/hashset"
@@ -16,14 +14,9 @@ import (
 )
 
 var (
-	lastChatID  string
 	page_cursor playwright.Page
-	relangiData = utils.GetRelangiJSON()
 )
 var Users = hashset.New()
-var ignoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama")
-var messageHandlers = map[string]func(){}
-var urlsToMonitor = [2]string{"https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?prettyPrint=false", "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false"}
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
 	// Handle your requests here
@@ -57,7 +50,6 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 }
 func main() {
 	// Set up the HTTP server
-	initMessageHandlers()
 	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
 	err := cmd.Start()
 	if err != nil {
@@ -79,7 +71,10 @@ func main() {
 	}
 	// defaultContext := browser.Contexts()
 	// page := defaultContext[0].Pages()[0] // get the first page
-	page, err := browser.Contexts()[0].NewPage() // get the first page
+	page, err := browser.Contexts()[0].NewPage()
+	if err != nil {
+		log.Fatalf("could not start playwright: %v", err)
+	}
 	page.Goto(utils.StreamingLink)
 	time.Sleep(2 * time.Second)
 	iframeLocator := page.Locator("iframe#chatframe")
@@ -109,115 +104,9 @@ func main() {
 	}
 }
 
-// func fetchNewMessages(page playwright.Page) {
-// 	elements, err := page.QuerySelectorAll("yt-live-chat-text-message-renderer")
-// 	if err != nil {
-// 		log.Printf("error querying chat messages: %v", err)
-// 		return
-// 	}
-
-// 	newMessages := []utils.LiveChatMessage{}
-// 	foundLastChatID := false
-
-// 	for _, element := range elements {
-// 		messageID, err := element.GetAttribute("id")
-// 		if err != nil {
-// 			log.Printf("error getting attribute 'id': %v", err)
-// 			continue
-// 		}
-
-// 		if lastChatID == "" {
-// 			chatContent, err := NewLiveChatMessage(element)
-// 			if err != nil {
-// 				log.Printf("error creating LiveChatMessage: %v", err)
-// 				continue
-// 			}
-// 			newMessages = append(newMessages, *chatContent)
-// 			lastChatID = messageID
-// 		} else {
-// 			if messageID == lastChatID {
-// 				foundLastChatID = true
-// 			} else if foundLastChatID {
-// 				chatContent, err := NewLiveChatMessage(element)
-// 				if err != nil {
-// 					log.Printf("error creating LiveChatMessage: %v", err)
-// 					continue
-// 				}
-// 				newMessages = append(newMessages, *chatContent)
-// 			}
-// 		}
-// 	}
-
-// 	if len(elements) > 0 {
-// 		lastChatID, _ = elements[len(elements)-1].GetAttribute("id")
-// 	} else {
-// 		fmt.Println("No new messages found")
-// 	}
-
-// 	if len(newMessages) > 0 {
-// 		msgProcessor := MessageProcessor{}
-// 		msgProcessor.processEachMessage(newMessages)
-// 	}
-// }
-
 func SendMsgToYoutube(content string) {
 	page_cursor.Locator("div#input").PressSequentially(content)
 	page_cursor.Keyboard().Press("Enter")
 }
 
 type MessageProcessor struct{}
-
-func initMessageHandlers() {
-	val := reflect.ValueOf(relangiData)
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Type().Field(i)
-		fieldName := field.Tag.Get("json")
-		messageHandlers[fieldName] = func(f reflect.Value) func() {
-			return func() {
-				if f.Len() > 0 {
-					SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
-				}
-			}
-		}(val.Field(i))
-	}
-}
-func NewLiveChatMessage(element playwright.ElementHandle) (*utils.LiveChatMessage, error) {
-	chatID, err := element.GetAttribute("id")
-	if err != nil {
-		return nil, err
-	}
-
-	authorPhotoURL, err := element.QuerySelector("yt-img-shadow img")
-	if err != nil {
-		return nil, err
-	}
-	photoURL, err := authorPhotoURL.GetAttribute("src")
-	if err != nil {
-		return nil, err
-	}
-
-	authorNameElement, err := element.QuerySelector("yt-live-chat-author-chip #author-name")
-	if err != nil {
-		return nil, err
-	}
-	authorName, err := authorNameElement.InnerText()
-	if err != nil {
-		return nil, err
-	}
-
-	messageContentElement, err := element.QuerySelector("#message")
-	if err != nil {
-		return nil, err
-	}
-	messageContent, err := messageContentElement.InnerText()
-	if err != nil {
-		return nil, err
-	}
-
-	return &utils.LiveChatMessage{
-		ChatID:         chatID,
-		AuthorName:     authorName,
-		AuthorPhotoURL: photoURL,
-		MessageContent: messageContent,
-	}, nil
-}

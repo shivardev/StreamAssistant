@@ -28,13 +28,14 @@ type Product struct {
 }
 
 const (
-	UserName    = "USER_NAME"
-	UserId      = "USER_ID"
-	Points      = "POINTS"
-	JoinedDate  = "JOINED_DATE"
-	LastComment = "LAST_COMMENT"
-	LastSeen    = "LAST_SEEN"
-	ProfilePic  = "PROFILE_PIC"
+	UserName      = "USER_NAME"
+	UserId        = "USER_ID"
+	Points        = "POINTS"
+	CommentsCount = "COMMENTS_COUNT"
+	JoinedDate    = "JOINED_DATE"
+	LastComment   = "LAST_COMMENT"
+	LastSeen      = "LAST_SEEN"
+	ProfilePic    = "PROFILE_PIC"
 )
 
 func DataBaseConnection() {
@@ -57,6 +58,7 @@ func DataBaseConnection() {
 		USER_NAME TEXT NOT NULL,
 		USER_ID	TEXT NOT NULL,
 		POINTS INTEGER,
+		COMMENTS_COUNT INTEGER,
 		JOINED_DATE TEXT,
 		LAST_COMMENT TEXT,
 		LAST_SEEN TEXT,
@@ -133,9 +135,9 @@ func InsertOrUpdateUser(msg ChatMessage) error {
 		// If user exists, update their points
 		updateSQL := fmt.Sprintf(`
 		UPDATE users 
-		SET %s = %s + 1, %s = ?, %s = ? 
+		SET %s = %s + 1,%s = %s + 1, %s = ?, %s = ? 
 		WHERE %s = ?`,
-			Points, Points, LastComment, LastSeen, UserId)
+			Points, Points, CommentsCount, CommentsCount, LastComment, LastSeen, UserId)
 		result, err := db.Exec(updateSQL, msg.MessageContent, msg.CommentTime, msg.AuthorId)
 		if err != nil {
 			return fmt.Errorf("error updating user: %v", err)
@@ -145,10 +147,10 @@ func InsertOrUpdateUser(msg ChatMessage) error {
 		// If user doesn't exist, insert a new user with 1 point
 		fmt.Println("Trying to insert a new user")
 		insertSQL := fmt.Sprintf(`
-		INSERT INTO users (%s, %s, %s, %s, %s, %s,%s) 
+		INSERT INTO users (%s, %s, %s,%s, %s, %s, %s,%s) 
 		VALUES (?, ?, ?, ?, ?, ?,?)`,
-			UserName, UserId, Points, JoinedDate, LastComment, LastSeen, ProfilePic)
-		_, err := db.Exec(insertSQL, msg.AuthorName, msg.AuthorId, 1, msg.CommentTime, msg.MessageContent, msg.CommentTime, msg.AuthorPhotoURL) // Or you can set `joinedDate` to the current date
+			UserName, UserId, Points, CommentsCount, JoinedDate, LastComment, LastSeen, ProfilePic)
+		_, err := db.Exec(insertSQL, msg.AuthorName, msg.AuthorId, 1, 1, msg.CommentTime, msg.MessageContent, msg.CommentTime, msg.AuthorPhotoURL) // Or you can set `joinedDate` to the current date
 		if err != nil {
 			fmt.Println("Error inserting new user: ", err)
 			return fmt.Errorf("error inserting new user: %v", err)

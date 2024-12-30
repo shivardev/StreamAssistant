@@ -18,3 +18,16 @@ type Stat struct {
 	MaxLikes           int  `json:"maxLikes"`
 	ShouldCongratulate bool `json:"shouldCongratulate"`
 }
+type RelangiData struct {
+	Cmds  []string `json:"cmds"`
+	Mama  []string `json:" mama "`
+	Op    []string `json:" op "`
+	NT    []string `json:" nt "`
+	Hi    []string `json:" hi "`
+	Sleep []string `json:" sleep"`
+	Bye   []string `json:" bye"`
+	Bf    []string `json:" bf"`
+	Food  []string `json:" food "`
+	Games []string `json:" games "`
+	Blog  []string `json:" blog"`
+}

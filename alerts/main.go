@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"myproject/utils"
+	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,6 +28,9 @@ var userDatabaseQueue chan utils.ChatMessage
 var gifQueue chan GifsPayload
 var connections = make(map[*websocket.Conn]bool)
 var mu sync.Mutex // To ensure thread-safety
+var Users = hashset.New()
+var relangiData = utils.GetRelangiJSON()
+var messageHandlers = map[string]func(){}
 
 func init() {
 	messageQueue = make(chan utils.ChatMessage, 100)
@@ -37,6 +43,9 @@ func processMsgQueue() {
 	for {
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
+		if utils.IgnoredUsers.Contains(msg.AuthorName) {
+			return
+		}
 		if strings.Contains(msg.MessageContent, "frog") {
 			utils.DoAction(utils.GetAction(string(utils.Frog)))
 		} else if strings.Contains(msg.MessageContent, "iron") {
@@ -54,7 +63,31 @@ func processMsgQueue() {
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
 		}
+		lowerMessage := strings.ToLower(msg.MessageContent)
+		if !utils.IgnoredUsers.Contains(msg.AuthorName) {
+			for keyword, handler := range messageHandlers {
+				if strings.Contains(lowerMessage, keyword) {
+					handler()
+					break // Assuming only one handler is needed per message
+				}
+			}
+		}
 		userDatabaseQueue <- msg
+	}
+}
+
+func initMessageHandlers() {
+	val := reflect.ValueOf(relangiData)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
+		fieldName := field.Tag.Get("json")
+		messageHandlers[fieldName] = func(f reflect.Value) func() {
+			return func() {
+				if f.Len() > 0 {
+					utils.SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
+				}
+			}
+		}(val.Field(i))
 	}
 }
 
@@ -83,7 +116,6 @@ func processSpeakQueue() {
 				log.Println("Error marshalling message to JSON:", err)
 				continue
 			}
-			// Send the message to all connected WebSocket clients
 			mu.Lock()
 			for conn := range connections {
 				if err := conn.WriteMessage(websocket.TextMessage, []byte(jsonMsg)); err != nil {
@@ -113,15 +145,21 @@ func processUserPoints() {
 		}
 		fmt.Println("User: ", user)
 		if user.Points == 1 {
-
-		} else if user.Points == 10 {
-
+			utils.SendMsgToYoutube(fmt.Sprintf(utils.WelcomeMsgs[rand.Intn(len(utils.WelcomeMsgs))], msg.AuthorName))
+		} else if user.Points%10 == 0 {
+			utils.SendMsgToYoutube(fmt.Sprintf(utils.CongratsMessages[rand.Intn(len(utils.CongratsMessages))], msg.AuthorName, user.Points))
+		} else {
+			if !utils.IgnoredUsers.Contains(msg.AuthorName) && !Users.Contains(msg.AuthorId) {
+				Users.Add(msg.AuthorId)
+				utils.SendMsgToYoutube(fmt.Sprintf(utils.SubscriberMsgs[rand.Intn(len(utils.SubscriberMsgs))], msg.AuthorName, user.Points))
+			}
 		}
 	}
 }
 func main() {
 	utils.GetActionList()
 	utils.DataBaseConnection()
+	initMessageHandlers()
 	go processMsgQueue()
 	go processSpeakQueue()
 	go processUserPoints()
@@ -134,9 +172,12 @@ func main() {
 	app.Get("/speak", func(c *fiber.Ctx) error {
 		return c.SendFile("./static/speak.html")
 	})
+	app.Get("/streamReset", func(c *fiber.Ctx) error {
+		Users.Clear()
+		fmt.Println("Stream reset")
+		return c.SendString("Stream reset successfully")
+	})
 	app.Use("/ws", func(c *fiber.Ctx) error {
-		// IsWebSocketUpgrade returns true if the client
-		// requested upgrade to the WebSocket protocol.
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
 			return c.Next()
@@ -153,12 +194,12 @@ func main() {
 		}
 
 		likeCompare := statPayload.Stats.Likes - statPayload.Stats.PreviousLikes
-		if statPayload.Stats.ShouldCongratulate {
+		if statPayload.Stats.ShouldCongratulate && statPayload.Stats.Likes > 0 {
 			utils.SendMsgToYoutube(fmt.Sprintf("Congrats! Stream has reached %d likes", statPayload.Stats.MaxLikes))
 		} else if likeCompare > 0 {
 			utils.DoAction(utils.GetAction(string(utils.Likes)))
 			fmt.Println("Thanks for liking the stream!")
-			utils.SendMsgToYoutube(fmt.Sprint("Thanks for liking the stream!"))
+			// utils.SendMsgToYoutube(fmt.Sprint("Thanks for liking the stream!"))
 		} else if likeCompare < 0 {
 			fmt.Println("Someone disliked the stream!")
 			utils.DoAction(utils.GetAction(string(utils.Cry)))
@@ -168,7 +209,6 @@ func main() {
 	})
 	app.Post("/takemsgs", func(c *fiber.Ctx) error {
 		fmt.Println("Processing messages")
-		// will takes msg from youtube playwright instance and proceses it as msgs are an array, each will will be deployed in a go
 		var chatMessages MessagePayload
 
 		if err := c.BodyParser(&chatMessages); err != nil {
@@ -206,11 +246,9 @@ func main() {
 	app.Post("/insta", func(c *fiber.Ctx) error {
 		var notification InstagramNotification
 
-		// Parse the JSON body
 		if err := json.Unmarshal(c.Body(), &notification); err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid JSON")
 		}
-		// Print each key
 		fmt.Println("Platform:", notification.Platform, "UserName:", notification.UserName, "Action:", notification.Action)
 		if notification.Platform == "instagram" {
 
