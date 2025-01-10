@@ -3,7 +3,9 @@ package main
 import (
 	"bot/utils"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os/exec"
@@ -14,7 +16,9 @@ import (
 )
 
 var (
+	serverIP    string
 	page_cursor playwright.Page
+	environment *string
 )
 var Users = hashset.New()
 
@@ -48,8 +52,40 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported HTTP method", http.StatusMethodNotAllowed)
 	}
 }
+func getStreamURL() string {
+	url := fmt.Sprintf("http://%s:3000/streamurl", serverIP)
+
+	// Make the GET request
+	response, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("Failed to make GET request: %v", err)
+	}
+	defer response.Body.Close() // Close the response body when done
+
+	// Read the response body
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatalf("Failed to read response body: %v", err)
+	}
+
+	// Print the response body
+	fmt.Println("Response Body:", string(body))
+	return string(body)
+}
 func main() {
-	// Set up the HTTP server
+	env := flag.String("env", "dev", "Set the environment (dev, prod, test)")
+	flag.Parse()
+	switch *env {
+	case "dev":
+		environment = env
+		serverIP = utils.DevIP // Development IP (localhost)
+	default:
+		serverIP = utils.RaspberryPiIP // Default to raspberry pi
+	}
+
+	fmt.Printf("Running in %s environment\n", *env)
+	fmt.Printf("Server IP Address: %s\n", serverIP)
+
 	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
 	err := cmd.Start()
 	if err != nil {
@@ -59,7 +95,7 @@ func main() {
 	fmt.Println("Chromium started")
 	time.Sleep(2 * time.Second)
 	// Start Playwright instance
-	utils.RunNodeScript()
+	utils.RunNodeScript(env)
 	// connect to playwright which has the youtube open by now
 	pw, err := playwright.Run()
 	if err != nil {
@@ -69,30 +105,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
-	// defaultContext := browser.Contexts()
-	// page := defaultContext[0].Pages()[0] // get the first page
-	page, err := browser.Contexts()[0].NewPage()
+	defaultContext := browser.Contexts()
+	page := defaultContext[0].Pages()[1] // get the first page
+	// page, err := browser.Contexts()[0].NewPage()
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
-	page.Goto(utils.StreamingLink)
-	time.Sleep(2 * time.Second)
-	iframeLocator := page.Locator("iframe#chatframe")
-	if iframeExists, err := iframeLocator.Count(); err != nil {
-		log.Fatalf("could not count iframes: %v", err)
-	} else if iframeExists == 0 {
-		fmt.Println("Iframe not found")
-		return
-	} else {
-		fmt.Println("Iframe found")
-	}
-
-	src, err := iframeLocator.GetAttribute("src")
-	if err != nil {
-		log.Fatalf("could not get attribute: %v", err)
-	}
-	fmt.Printf("Iframe src attribute: %s\n", src)
-	page.Goto("https://www.youtube.com" + src)
+	// streamURL := getStreamURL()
+	// page.Goto("https://www.youtube.com/live_chat?v=" + streamURL)
 	page_cursor = page
 	// HTTP
 	http.HandleFunc("/", handleRequests)
@@ -105,6 +125,10 @@ func main() {
 }
 
 func SendMsgToYoutube(content string) {
+	fmt.Println("Sending message to youtube", content)
+	// if *environment == "dev" {
+	// 	return
+	// }
 	page_cursor.Locator("div#input").PressSequentially(content)
 	page_cursor.Keyboard().Press("Enter")
 }

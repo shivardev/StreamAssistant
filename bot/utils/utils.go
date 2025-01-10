@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"syscall"
@@ -15,10 +16,17 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
-func RunNodeScript() {
-	workingDir := `D:\coding\streamAssistant\nodePlaywrite\src`
+func RunNodeScript(env *string) {
+	workingDir := `D:\coding\streamAssistant\nodePlaywrite\dist`
+	var cmd *exec.Cmd
 
-	cmd := exec.Command("node", "index.js")
+	if *env == "dev" {
+		fmt.Println("Running in dev mode")
+		cmd = exec.Command("node", "index.js", "-env", "dev")
+	} else {
+		cmd = exec.Command("node", "index.js")
+	}
+
 	cmd.Dir = workingDir
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	err := cmd.Start()

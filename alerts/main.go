@@ -31,6 +31,7 @@ var mu sync.Mutex // To ensure thread-safety
 var Users = hashset.New()
 var relangiData = utils.GetRelangiJSON()
 var messageHandlers = map[string]func(){}
+var videoLink string
 
 func init() {
 	messageQueue = make(chan utils.ChatMessage, 100)
@@ -44,7 +45,7 @@ func processMsgQueue() {
 		msg := <-messageQueue
 		println(msg.MessageContent, msg.AuthorName)
 		if utils.IgnoredUsers.Contains(msg.AuthorName) {
-			return
+			continue
 		}
 		if strings.Contains(msg.MessageContent, "frog") {
 			utils.DoAction(utils.GetAction(string(utils.Frog)))
@@ -136,24 +137,44 @@ func processUserPoints() {
 	for {
 
 		msg := <-userDatabaseQueue
-		fmt.Println("Processing User points")
-		utils.InsertOrUpdateUser(msg)
-		user, err := utils.FetchUser(msg)
+		fmt.Println("Processing User", msg.AuthorName)
+		var user utils.User
+		exists, user, err := utils.CheckUserExists(msg.AuthorId)
 		if err != nil {
-			fmt.Println("Error fetching user: ", err)
+			fmt.Println("Error checking user existence: ", err)
 			continue
 		}
-		fmt.Println("User: ", user)
+		if !exists {
+			fmt.Println("User doesn't exist, inserting")
+			user, err = utils.InsertUser(msg)
+			if err != nil {
+				fmt.Println("Error Inserting user: ", err)
+				continue
+			}
+		}
+		if exists {
+			fmt.Println("User exists, updating")
+			user, err = utils.UpdateUser(msg, user)
+			if err != nil {
+				fmt.Println("Error fetching user: ", err)
+				continue
+			}
+		}
+		fmt.Println("User: ", user.UserName, " -> ", user.Points)
+
 		if user.Points == 1 {
 			utils.SendMsgToYoutube(fmt.Sprintf(utils.WelcomeMsgs[rand.Intn(len(utils.WelcomeMsgs))], msg.AuthorName))
 		} else if user.Points%10 == 0 {
 			utils.SendMsgToYoutube(fmt.Sprintf(utils.CongratsMessages[rand.Intn(len(utils.CongratsMessages))], msg.AuthorName, user.Points))
+		} else if strings.HasPrefix(msg.MessageContent, "!points") {
+			utils.SendMsgToYoutube(fmt.Sprintf(utils.PointsMsgs[rand.Intn(len(utils.PointsMsgs))], msg.AuthorName, user.Points))
 		} else {
 			if !utils.IgnoredUsers.Contains(msg.AuthorName) && !Users.Contains(msg.AuthorId) {
 				Users.Add(msg.AuthorId)
 				utils.SendMsgToYoutube(fmt.Sprintf(utils.SubscriberMsgs[rand.Intn(len(utils.SubscriberMsgs))], msg.AuthorName, user.Points))
 			}
 		}
+		fmt.Println("User: ", user.UserName, "Processed")
 	}
 }
 func main() {
@@ -184,6 +205,19 @@ func main() {
 		}
 		return fiber.ErrUpgradeRequired
 	})
+	app.Post("/streamurl", func(c *fiber.Ctx) error {
+		var streamUrl utils.StreamUrl
+
+		if err := c.BodyParser(&streamUrl); err != nil {
+			fmt.Println("Error parsing body:", err)
+			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
+		}
+		videoLink = streamUrl.Url
+		return c.Status(fiber.StatusOK).SendString("Stream url received successfully")
+	})
+	app.Get("/streamurl", func(c *fiber.Ctx) error {
+		return c.SendString(videoLink)
+	})
 	app.Post("/takestats", func(c *fiber.Ctx) error {
 		// will takes current stats from youtube live stream contains live likes and viewer count of the stream.
 		var statPayload utils.StatsPayload
@@ -194,7 +228,7 @@ func main() {
 		}
 
 		likeCompare := statPayload.Stats.Likes - statPayload.Stats.PreviousLikes
-		if statPayload.Stats.ShouldCongratulate && statPayload.Stats.Likes > 0 {
+		if statPayload.Stats.ShouldCongratulate && statPayload.Stats.MaxLikes > 0 {
 			utils.SendMsgToYoutube(fmt.Sprintf("Congrats! Stream has reached %d likes", statPayload.Stats.MaxLikes))
 		} else if likeCompare > 0 {
 			utils.DoAction(utils.GetAction(string(utils.Likes)))
@@ -217,7 +251,6 @@ func main() {
 		}
 		go func() {
 			for _, msg := range chatMessages.Messages {
-				fmt.Println(msg.MessageContent)
 				messageQueue <- msg
 			}
 		}()

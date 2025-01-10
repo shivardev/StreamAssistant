@@ -8,5 +8,5 @@
 
 Build the applicaiton bot
 ```bash
-go build -o bot
+go build -o bot.exe
 ```

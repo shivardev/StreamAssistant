@@ -25,3 +25,7 @@ streaming/dependency-reduced-pom.xml
 
 # Javascript
 *.js
+alerts/database/UserData.db
+
+#database
+/alerts/badgerDB

@@ -1,60 +1,25 @@
 import { chromium } from "playwright";
 import { LikeResponseObj } from "./utils/likesApi.modal";
 import { CommentObj } from "./utils/commentApi.modal";
-import { API_URLS } from "./utils/constants";
-import { msgsPayload } from "./utils/interfaces";
+import { API_URLS, urls } from "./utils/constants";
+import { msgsPayload, urlPayload } from "./utils/interfaces";
+import { sendPostRequest } from "./utils/utils";
 
 (async () => {
-  const sendPostRequest = (url: string, payload: any) => {
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((response) => {
-        console.log("Request sent successfully");
-      })
-      .catch((error) => {
-        console.error("Error sending request:", error);
-      });
-
-  };
-
   let globalMaxLikeCount = 0;
   let previousLikeCount = 0;
-  const urls: string[] = [
-    "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?prettyPrint=false",
-    "https://www.youtube.com/youtubei/v1/updated_metadata?prettyPrint=false",
-  ];
-
+  let videoID: undefined | string = undefined
   // Launch the browser
-
+  let isVideoURLSent: boolean = false
   const browser = await chromium.connectOverCDP("http://127.0.0.1:8989");
   const defaultContext = browser.contexts()[0];
-  const page = defaultContext.pages()[0];
-  function findActionByKey(arr: any, key: string): any | null {
-    return arr.find((action: any) => action[key] !== undefined) || null;
-  }
+  const withVideoPage = defaultContext.pages()[0];
+  const chatOnlyPage = await defaultContext.newPage();
 
   let congoMap = new Map<number, boolean>();
-  function checkAndCongratulate(number: number): boolean {
-    let base = Math.floor(number / 5) * 5;
 
-    if (number >= base && number < base + 5) {
-      if (!congoMap.has(base)) {
-        congoMap.set(base, true);
-        return true;
-      }
-    }
-    return false;
-  }
-  // Intercept network responses
-
-  page.on("response", async (response) => {
+  withVideoPage.on("response", async (response) => {
     const url = response.url();
-    console.log(url)
     if (urls.includes(url)) {
       if (urls.indexOf(url) == 1) {
         try {
@@ -92,62 +57,97 @@ import { msgsPayload } from "./utils/interfaces";
         console.log("mostly chat URL")
         try {
           const json: CommentObj = await response.json();
+          videoID = (json.continuationContents.liveChatContinuation.continuations[0].invalidationContinuationData.invalidationId.topic as string).split('~')[1]
+
           const actions =
             json.continuationContents.liveChatContinuation.actions;
           const msgsPayload: msgsPayload[] = [];
           if (actions) {
             for (const action of actions) {
-              const item = action.addChatItemAction.item;
-              let finalMessage = "";
-              let authorName = "";
-              let authorId = "";
-              let timestamp = "";
-              let authorPhoto = "";
-              authorName =
-                item.liveChatTextMessageRenderer.authorName.simpleText;
-              authorId =
-                item.liveChatTextMessageRenderer.authorExternalChannelId;
-              timestamp = item.liveChatTextMessageRenderer.timestampUsec;
-              authorPhoto =
-                item.liveChatTextMessageRenderer.authorPhoto.thumbnails[
-                  item.liveChatTextMessageRenderer.authorPhoto.thumbnails
-                    .length - 1
-                ].url;
-              for (const run of item.liveChatTextMessageRenderer.message.runs) {
-                if (run.text) {
-                  finalMessage += run.text;
+              try {
+                const item = action.addChatItemAction.item;
+                let finalMessage = "";
+                let authorName = "";
+                let authorId = "";
+                let timestamp = "";
+                let authorPhoto = "";
+                authorName =
+                  item.liveChatTextMessageRenderer.authorName.simpleText;
+                authorId =
+                  item.liveChatTextMessageRenderer.authorExternalChannelId;
+                timestamp = item.liveChatTextMessageRenderer.timestampUsec;
+                authorPhoto =
+                  item.liveChatTextMessageRenderer.authorPhoto.thumbnails[
+                    item.liveChatTextMessageRenderer.authorPhoto.thumbnails
+                      .length - 1
+                  ].url;
+                for (const run of item.liveChatTextMessageRenderer.message.runs) {
+                  if (run.text) {
+                    finalMessage += run.text;
+                  }
+                  // if(run.emoji){
+                  //   finalMessage += run.emoji.emojiId;
+                  // }
                 }
-                // if(run.emoji){
-                //   finalMessage += run.emoji.emojiId;
-                // }
+                const payload: msgsPayload = {
+                  authorName: authorName,
+                  authorId: authorId,
+                  timestamp: timestamp,
+                  authorPhotoUrl: authorPhoto,
+                  messageContent: finalMessage,
+                  videoId:videoID
+                };
+                console.log(payload.authorName);
+                msgsPayload.push(payload);
               }
-              const payload: msgsPayload = {
-                authorName: authorName,
-                authorId: authorId,
-                timestamp: timestamp,
-                authorPhotoUrl: authorPhoto,
-                messageContent: finalMessage,
-              };
-              console.log(payload.authorName);
-              msgsPayload.push(payload);
+              catch (error) {
+                console.log(error)
+              }
             }
             sendPostRequest(API_URLS.msgs, { messages: msgsPayload });
           } else {
             console.log("noactions");
           }
+          if (!isVideoURLSent) {
+            const linkPlayload: urlPayload = {
+              url: videoID
+            };
+            sendPostRequest(API_URLS.videoLink, linkPlayload)
+            isVideoURLSent = true
+          }
         } catch (error) {
-          console.log("Response body could not be parsed as JSON.");
+          console.log("Response body could not be parsed as JSON.", error);
         }
       }
     }
   });
 
-  await page.goto(
+  await withVideoPage.goto(
     "https://www.youtube.com/@blazingbane5565/live"
   );
+  setTimeout(async () => {
+    await chatOnlyPage.goto(
+      "https://www.youtube.com/live_chat?v=" + videoID
+    );
+  }, 20000);
+
 
   console.log("Listening for API calls...");
   while (true) {
-    await page.waitForTimeout(10000);
+    await withVideoPage.waitForTimeout(10000);
+  }
+  function checkAndCongratulate(number: number): boolean {
+    let base = Math.floor(number / 5) * 5;
+
+    if (number >= base && number < base + 5) {
+      if (!congoMap.has(base)) {
+        congoMap.set(base, true);
+        return true;
+      }
+    }
+    return false;
+  }
+  function findActionByKey(arr: any, key: string): any | null {
+    return arr.find((action: any) => action[key] !== undefined) || null;
   }
 })();

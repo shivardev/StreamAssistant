@@ -26,7 +26,7 @@ var SubscriberMsgs = []string{
 	"Oh, it’s %s with %d points... You’ve been here before, but let’s see if you can do better this time! 😜",
 	"Look who came crawling back! %s with %d points... Don’t let your ego get too big! 😂",
 }
-var IgnoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama")
+var IgnoredUsers = hashset.New("Nightbot", "YouTube", "Blazing Bane", "Relangi mama", "Streamlabs")
 var CongratsMessages = []string{
 	"Congrats, %s! You actually got %d points? I'm impressed... kinda. 😏",
 	"Well, look at you, %s! %d points, huh? You’re almost good at this! 😜",
@@ -38,4 +38,7 @@ var CongratsMessages = []string{
 	"Hey %s, you got %d points... Now let’s see if you can do it again without tripping over your own feet! 😅",
 	"Not bad, %s! %d points. Keep it up and you might actually become a pro... maybe. 😜",
 	"Look who’s climbing the leaderboard! %s with %d points. Keep it up, but don’t get cocky. 😎",
+}
+var PointsMsgs = []string{
+	"%s -> %d Points",
 }

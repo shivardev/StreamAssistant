@@ -35,37 +35,39 @@ func GetRelangiJSON() RelangiData {
 }
 
 func SendMsgToYoutube(msg string) {
-	apiURL := "http://10.0.0.128:8181" // Replace with your actual endpoint
+	go func() {
+		apiURL := "http://10.0.0.128:8181" // Replace with your actual endpoint
 
-	data := map[string]interface{}{
-		"msg": msg,
-	}
+		data := map[string]interface{}{
+			"msg": msg,
+		}
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Fatalf("Error marshalling data: %v", err)
-		return
-	}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			log.Fatalf("Error marshalling data: %v", err)
+			return
+		}
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		log.Fatalf("Error creating request: %v", err)
-		return
-	}
+		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			log.Fatalf("Error creating request: %v", err)
+			return
+		}
 
-	req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatalf("Error sending request: %v", err)
-		return
-	}
-	defer resp.Body.Close()
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Fatalf("Error sending request: %v", err)
+			return
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Message sent successfully")
-	} else {
-		fmt.Printf("Failed to send message. Status: %d\n", resp.StatusCode)
-	}
+		if resp.StatusCode == http.StatusOK {
+			fmt.Println("Message sent successfully")
+		} else {
+			fmt.Printf("Failed to send message. Status: %d\n", resp.StatusCode)
+		}
+	}()
 }

@@ -6,6 +6,7 @@ type ChatMessage struct {
 	AuthorPhotoURL string `json:"authorPhotoUrl"`
 	CommentTime    string `json:"timestamp"`
 	MessageContent string `json:"messageContent"`
+	VideoID        string `json:"videoId"`
 }
 
 type StatsPayload struct {
@@ -17,6 +18,9 @@ type Stat struct {
 	Viewers            int  `json:"viewers"`
 	MaxLikes           int  `json:"maxLikes"`
 	ShouldCongratulate bool `json:"shouldCongratulate"`
+}
+type StreamUrl struct {
+	Url string `json:"url"`
 }
 type RelangiData struct {
 	Cmds  []string `json:"cmds"`

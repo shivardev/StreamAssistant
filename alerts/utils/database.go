@@ -1,197 +1,184 @@
 package utils
 
 import (
-	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
-	"path/filepath"
 
-	_ "github.com/glebarez/go-sqlite"
+	badger "github.com/dgraph-io/badger/v4"
 )
 
-var db *sql.DB
+var db *badger.DB
 
 type User struct {
-	ID          int
-	UserName    string
-	UserId      string
-	Points      int
-	JoinedDate  string
-	LastComment string
-	LastSeen    string
-	ProfilePic  string
-	CarUrl      string
-}
-type Product struct {
-	Code  string
-	Price uint
+	UserName       string
+	UserId         string
+	Points         int
+	JoinedDate     string
+	FirstVideoLink string
+	LastVideoLink  string
+	LastComment    string
+	LastSeen       string
+	ProfilePic     string
 }
 
-const (
-	UserName      = "USER_NAME"
-	UserId        = "USER_ID"
-	Points        = "POINTS"
-	CommentsCount = "COMMENTS_COUNT"
-	JoinedDate    = "JOINED_DATE"
-	LastComment   = "LAST_COMMENT"
-	LastSeen      = "LAST_SEEN"
-	ProfilePic    = "PROFILE_PIC"
-)
-
-func DataBaseConnection() {
-	dbPath := "./database/UserData.db"
-
-	absPath, err := filepath.Abs(dbPath)
+// Convert Go struct (User) to JSON ([]byte)
+func ObjectToJSON(user *User) ([]byte, error) {
+	b, err := json.Marshal(user)
 	if err != nil {
-		log.Fatalf("Error getting absolute path: %v", err)
+		return nil, fmt.Errorf("Error marshalling user data: %v", err)
 	}
-
-	fmt.Println("Database file path:", absPath)
-
-	db, err = sql.Open("sqlite", absPath)
-	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
-	}
-
-	createTableSQL := `CREATE TABLE IF NOT EXISTS users (
-		ID INTEGER PRIMARY KEY AUTOINCREMENT,
-		USER_NAME TEXT NOT NULL,
-		USER_ID	TEXT NOT NULL,
-		POINTS INTEGER,
-		COMMENTS_COUNT INTEGER,
-		JOINED_DATE TEXT,
-		LAST_COMMENT TEXT,
-		LAST_SEEN TEXT,
-		PROFILE_PIC TEXT
-	);`
-	_, err = db.Exec(createTableSQL)
-	if err != nil {
-		log.Fatalf("Error creating table: %v", err)
-	}
-
-	fmt.Println("Database and table are set up successfully.")
+	return b, nil
 }
 
-// Retrieve all users from the users table
-func GetAllUsers() {
-	rows, err := db.Query("SELECT * FROM users")
-	if err != nil {
-		log.Fatalf("Error retrieving users: %v", err)
-	}
-	defer rows.Close()
-
-	fmt.Println("Users in the database:")
-	for rows.Next() {
-		var id int
-		var username string
-		var points int
-		var joinedDate, lastComment string
-
-		err = rows.Scan(&id, &username, &points, &joinedDate, &lastComment)
-		if err != nil {
-			log.Fatalf("Error scanning row: %v", err)
-		}
-		fmt.Printf("ID: %d, Username: %s, Points: %d, JoinedDate: %s, LastComment: %s\n", id, username, points, joinedDate, lastComment)
-	}
-}
-
-// Update user points based on userid
-func UpdateUserPoints(authorId string, newPoints int) {
-	updateSQL := `UPDATE users SET points = ? WHERE userId = ?`
-	statement, err := db.Prepare(updateSQL)
-	if err != nil {
-		log.Fatalf("Error preparing update statement: %v", err)
-	}
-	defer statement.Close()
-
-	_, err = statement.Exec(newPoints, authorId)
-	if err != nil {
-		log.Fatalf("Error executing update statement: %v", err)
-	}
-
-	fmt.Printf("User '%s' points updated to %d.\n", authorId, newPoints)
-}
-
-func CheckUserExists(msg ChatMessage) (bool, error) {
-	var count int
-
-	querySQL := fmt.Sprintf(`SELECT COUNT(*) FROM users WHERE %s = ?`, UserId)
-	err := db.QueryRow(querySQL, msg.AuthorId).Scan(&count)
-	if err != nil {
-		return false, fmt.Errorf("error checking if user exists: %v", err)
-	}
-	return count > 0, nil
-}
-func InsertOrUpdateUser(msg ChatMessage) error {
-	// Check if the user exists
-	fmt.Println("Checking if exits ")
-
-	exists, err := CheckUserExists(msg)
-	if err != nil {
-		return fmt.Errorf("error checking user existence: %v", err)
-	}
-	fmt.Println("Response of ", exists)
-	if exists {
-		// If user exists, update their points
-		updateSQL := fmt.Sprintf(`
-		UPDATE users 
-		SET %s = %s + 1,%s = %s + 1, %s = ?, %s = ? 
-		WHERE %s = ?`,
-			Points, Points, CommentsCount, CommentsCount, LastComment, LastSeen, UserId)
-		result, err := db.Exec(updateSQL, msg.MessageContent, msg.CommentTime, msg.AuthorId)
-		if err != nil {
-			return fmt.Errorf("error updating user: %v", err)
-		}
-		fmt.Println("User points updated successfully.", result)
-	} else {
-		// If user doesn't exist, insert a new user with 1 point
-		fmt.Println("Trying to insert a new user")
-		insertSQL := fmt.Sprintf(`
-		INSERT INTO users (%s, %s, %s,%s, %s, %s, %s,%s) 
-		VALUES (?, ?, ?, ?, ?, ?,?)`,
-			UserName, UserId, Points, CommentsCount, JoinedDate, LastComment, LastSeen, ProfilePic)
-		_, err := db.Exec(insertSQL, msg.AuthorName, msg.AuthorId, 1, 1, msg.CommentTime, msg.MessageContent, msg.CommentTime, msg.AuthorPhotoURL) // Or you can set `joinedDate` to the current date
-		if err != nil {
-			fmt.Println("Error inserting new user: ", err)
-			return fmt.Errorf("error inserting new user: %v", err)
-		}
-		fmt.Println("New user inserted successfully.")
-	}
-	FetchUser(msg)
-	return nil
-}
-
-func FetchUser(msg ChatMessage) (User, error) {
+// Convert JSON ([]byte) to Go struct (User)
+func JSONToObject(data []byte) (User, error) {
 	var user User
-	querySQL := fmt.Sprintf(`SELECT * FROM users WHERE %s = ?`, UserId)
-	err := db.QueryRow(querySQL, msg.AuthorId).Scan(&user.ID, &user.UserName, &user.UserId, &user.Points, &user.JoinedDate, &user.LastComment, &user.LastSeen, &user.ProfilePic)
+	err := json.Unmarshal(data, &user)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// User does not exist
-			return user, err
-		}
-		fmt.Println("Error fetching user:", err)
-		return user, err
+		return user, fmt.Errorf("Error unmarshalling JSON data: %v", err)
 	}
 	return user, nil
 }
 
-// Delete a user by username
-func DeleteUser(username string) {
-	deleteSQL := `DELETE FROM users WHERE username = ?`
-	statement, err := db.Prepare(deleteSQL)
+func DataBaseConnection() {
+	// Open a Badger database
+	var err error
+	db, err = badger.Open(badger.DefaultOptions("./badgerDB"))
 	if err != nil {
-		log.Fatalf("Error preparing delete statement: %v", err)
-	}
-	defer statement.Close()
-
-	_, err = statement.Exec(username)
-	if err != nil {
-
-		log.Fatalf("Error executing delete statement: %v", err)
+		log.Fatalf("Error opening database: %v", err)
 	}
 
-	fmt.Printf("User '%s' deleted successfully.\n", username)
+}
+
+func GetUserById(userId string) (User, error) {
+	var user User
+	err := db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(userId))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Item:", item)
+		return nil
+	})
+	if err != nil {
+		return user, fmt.Errorf("user not found: %v", err)
+	}
+	return user, nil
+}
+
+// Insert or update a user in the database
+func InsertUser(msg ChatMessage) (User, error) {
+	insertUser := User{
+		UserName:       msg.AuthorName,
+		UserId:         msg.AuthorId,
+		LastComment:    msg.MessageContent,
+		LastSeen:       msg.CommentTime,
+		Points:         1,
+		JoinedDate:     msg.CommentTime,
+		ProfilePic:     msg.AuthorPhotoURL,
+		FirstVideoLink: msg.VideoID,
+		LastVideoLink:  msg.VideoID,
+	}
+	data, err := ObjectToJSON(&insertUser)
+	if err != nil {
+		return insertUser, fmt.Errorf("error converting user to JSON: %v", err)
+	}
+	err = db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(msg.AuthorId), []byte(data))
+		return err
+	})
+	if err != nil {
+		return insertUser, fmt.Errorf("error inserting or updating user: %v", err)
+	}
+	return insertUser, nil
+}
+
+func UpdateUser(msg ChatMessage, user User) (User, error) {
+	var updatedUser = User{
+		UserName:       msg.AuthorName,
+		UserId:         msg.AuthorId,
+		LastComment:    msg.MessageContent,
+		LastSeen:       msg.CommentTime,
+		Points:         user.Points + 1,
+		JoinedDate:     user.JoinedDate,
+		ProfilePic:     msg.AuthorPhotoURL,
+		FirstVideoLink: user.FirstVideoLink,
+		LastVideoLink:  msg.VideoID,
+	}
+	data, err := ObjectToJSON(&updatedUser)
+	if err != nil {
+		return updatedUser, fmt.Errorf("error converting user to JSON: %v", err)
+	}
+	err = db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(msg.AuthorId), []byte(data))
+		return err
+	})
+	if err != nil {
+		return updatedUser, fmt.Errorf("error inserting or updating user: %v", err)
+	}
+	return user, nil
+}
+
+// Check if a user exists by UserId
+func CheckUserExists(userId string) (bool, User, error) {
+	var exists bool
+	var valCopy []byte
+	var user User
+
+	err := db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(userId))
+		if err == nil {
+			exists = true
+		} else if err == badger.ErrKeyNotFound {
+			exists = false
+		} else {
+			return fmt.Errorf("error getting user from db: %v", err)
+		}
+		if item == nil {
+			exists = false
+			return nil
+		}
+		err2 := item.Value(func(val []byte) error {
+			fmt.Printf("The UserData is: %s\n", val)
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
+
+		if err2 != nil {
+			return err2
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return false, user, fmt.Errorf("error checking user existence: %v", err)
+	}
+
+	if exists {
+		err := json.Unmarshal(valCopy, &user)
+		if err != nil {
+			return false, user, fmt.Errorf("error unmarshalling user data: %v", err)
+		}
+	}
+
+	return exists, user, nil
+}
+
+// Delete a user by UserId
+func DeleteUser(userId string) error {
+	err := db.Update(func(txn *badger.Txn) error {
+		// Delete the user by UserId
+		err := txn.Delete([]byte(userId))
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("error deleting user: %v", err)
+	}
+
+	return nil
 }
 
 // Close the database connection
@@ -199,20 +186,5 @@ func CloseDB() {
 	if err := db.Close(); err != nil {
 		log.Fatalf("Error closing database: %v", err)
 	}
-	fmt.Println("Database connection closed.")
-}
-
-func Transform(msg ChatMessage) User {
-
-	user := User{
-		UserName:    msg.AuthorName,
-		UserId:      msg.AuthorId,
-		LastComment: msg.MessageContent,
-		LastSeen:    msg.CommentTime,
-		Points:      0,
-		JoinedDate:  msg.CommentTime,
-		ProfilePic:  msg.AuthorPhotoURL,
-	}
-
-	return user
+	fmt.Println("Badger database connection closed.")
 }

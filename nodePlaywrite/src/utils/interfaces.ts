@@ -4,4 +4,9 @@ export interface msgsPayload{
     timestamp: string;
     authorPhotoUrl: string;
     messageContent: string;
+    videoId:string
+}
+ 
+export interface urlPayload{
+    "url":string
 }
