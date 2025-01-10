@@ -138,7 +138,6 @@ func processUserPoints() {
 
 		msg := <-userDatabaseQueue
 		fmt.Println("Processing User", msg.AuthorName)
-		utils.PrintAllUsers()
 		var user utils.User
 		exists, user, err := utils.CheckUserExists(msg.AuthorId)
 		if err != nil {

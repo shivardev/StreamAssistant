@@ -73,7 +73,7 @@ func getStreamURL() string {
 	return string(body)
 }
 func main() {
-	env := flag.String("env", "dev", "Set the environment (dev, prod, test)")
+	env := flag.String("env", "prod", "Set the environment (dev, prod, test)")
 	flag.Parse()
 	switch *env {
 	case "dev":
