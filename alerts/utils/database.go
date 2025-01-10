@@ -44,7 +44,11 @@ func JSONToObject(data []byte) (User, error) {
 func DataBaseConnection() {
 	// Open a Badger database
 	var err error
-	db, err = badger.Open(badger.DefaultOptions("./badgerDB"))
+	options := badger.DefaultOptions("./badgerDB").
+		WithInMemory(false).            // Ensure it's using disk-based storage    // Limit LSM table size to 16MB
+		WithValueLogFileSize(16 << 20). // Limit value log file size to 16MB
+		WithSyncWrites(false)           // Optio
+	db, err = badger.Open(options)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
