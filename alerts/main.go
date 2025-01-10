@@ -138,6 +138,7 @@ func processUserPoints() {
 
 		msg := <-userDatabaseQueue
 		fmt.Println("Processing User", msg.AuthorName)
+		utils.PrintAllUsers()
 		var user utils.User
 		exists, user, err := utils.CheckUserExists(msg.AuthorId)
 		if err != nil {
@@ -164,6 +165,7 @@ func processUserPoints() {
 
 		if user.Points == 1 {
 			utils.SendMsgToYoutube(fmt.Sprintf(utils.WelcomeMsgs[rand.Intn(len(utils.WelcomeMsgs))], msg.AuthorName))
+			Users.Add(msg.AuthorId)
 		} else if user.Points%10 == 0 {
 			utils.SendMsgToYoutube(fmt.Sprintf(utils.CongratsMessages[rand.Intn(len(utils.CongratsMessages))], msg.AuthorName, user.Points))
 		} else if strings.HasPrefix(msg.MessageContent, "!points") {

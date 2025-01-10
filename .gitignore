@@ -29,3 +29,4 @@ alerts/database/UserData.db
 
 #database
 /alerts/badgerDB
+alerts/userDB.db

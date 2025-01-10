@@ -1,14 +1,15 @@
 package utils
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 
-	badger "github.com/dgraph-io/badger/v4"
+	_ "github.com/glebarez/go-sqlite"
 )
 
-var db *badger.DB
+var db *sql.DB
 
 type User struct {
 	UserName       string
@@ -42,36 +43,50 @@ func JSONToObject(data []byte) (User, error) {
 }
 
 func DataBaseConnection() {
-	// Open a Badger database
 	var err error
-	options := badger.DefaultOptions("./badgerDB").
-		WithInMemory(false).            // Ensure it's using disk-based storage    // Limit LSM table size to 16MB
-		WithValueLogFileSize(16 << 20). // Limit value log file size to 16MB
-		WithSyncWrites(false)           // Optio
-	db, err = badger.Open(options)
+	// Open an SQLite database
+	db, err = sql.Open("sqlite", "./userDB.db")
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
+	// Create the users table with the new schema
+	createTableSQL := `CREATE TABLE IF NOT EXISTS users (
+		UserId TEXT PRIMARY KEY,
+		UserJson TEXT
+	);`
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		log.Fatalf("Error creating table: %v", err)
+	}
 }
 
 func GetUserById(userId string) (User, error) {
 	var user User
-	err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(userId))
-		if err != nil {
-			return err
-		}
-		fmt.Println("Item:", item)
-		return nil
-	})
+	var userJson []byte
+
+	// Query to fetch the UserJson for the specified UserId
+	query := `SELECT UserJson FROM users WHERE UserId = ?`
+	row := db.QueryRow(query, userId)
+
+	// Scan the JSON data from the database
+	err := row.Scan(&userJson)
 	if err != nil {
-		return user, fmt.Errorf("user not found: %v", err)
+		if err == sql.ErrNoRows {
+			return user, fmt.Errorf("user not found")
+		}
+		return user, fmt.Errorf("error retrieving user data: %v", err)
 	}
+
+	// Unmarshal the JSON data into the User struct
+	err = json.Unmarshal(userJson, &user)
+	if err != nil {
+		return user, fmt.Errorf("error unmarshalling user data: %v", err)
+	}
+
 	return user, nil
 }
 
-// Insert or update a user in the database
 func InsertUser(msg ChatMessage) (User, error) {
 	insertUser := User{
 		UserName:       msg.AuthorName,
@@ -84,22 +99,26 @@ func InsertUser(msg ChatMessage) (User, error) {
 		FirstVideoLink: msg.VideoID,
 		LastVideoLink:  msg.VideoID,
 	}
-	data, err := ObjectToJSON(&insertUser)
+
+	// Convert User struct to JSON
+	userJson, err := json.Marshal(insertUser)
 	if err != nil {
-		return insertUser, fmt.Errorf("error converting user to JSON: %v", err)
+		return insertUser, fmt.Errorf("error marshalling user data to JSON: %v", err)
 	}
-	err = db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(msg.AuthorId), []byte(data))
-		return err
-	})
+
+	// Insert the user and their JSON data
+	query := `INSERT OR REPLACE INTO users (UserId, UserJson) VALUES (?, ?)`
+	_, err = db.Exec(query, insertUser.UserId, userJson)
 	if err != nil {
 		return insertUser, fmt.Errorf("error inserting or updating user: %v", err)
 	}
+
+	fmt.Println("User inserted successfully.")
 	return insertUser, nil
 }
-
 func UpdateUser(msg ChatMessage, user User) (User, error) {
-	var updatedUser = User{
+	// Update the user fields
+	updatedUser := User{
 		UserName:       msg.AuthorName,
 		UserId:         msg.AuthorId,
 		LastComment:    msg.MessageContent,
@@ -110,85 +129,125 @@ func UpdateUser(msg ChatMessage, user User) (User, error) {
 		FirstVideoLink: user.FirstVideoLink,
 		LastVideoLink:  msg.VideoID,
 	}
-	data, err := ObjectToJSON(&updatedUser)
-	if err != nil {
-		return updatedUser, fmt.Errorf("error converting user to JSON: %v", err)
-	}
-	err = db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte(msg.AuthorId), []byte(data))
-		return err
-	})
-	if err != nil {
-		return updatedUser, fmt.Errorf("error inserting or updating user: %v", err)
-	}
-	return user, nil
-}
 
-// Check if a user exists by UserId
+	// Convert updatedUser to JSON
+	userJson, err := json.Marshal(updatedUser)
+	if err != nil {
+		return updatedUser, fmt.Errorf("error marshalling updated user data to JSON: %v", err)
+	}
+
+	// Update the UserJson column in the database
+	query := `UPDATE users SET UserJson = ? WHERE UserId = ?`
+	_, err = db.Exec(query, userJson, updatedUser.UserId)
+	if err != nil {
+		return updatedUser, fmt.Errorf("error updating user: %v", err)
+	}
+
+	fmt.Println("User updated successfully.")
+	return updatedUser, nil
+}
 func CheckUserExists(userId string) (bool, User, error) {
 	var exists bool
-	var valCopy []byte
 	var user User
 
-	err := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(userId))
-		if err == nil {
-			exists = true
-		} else if err == badger.ErrKeyNotFound {
-			exists = false
-		} else {
-			return fmt.Errorf("error getting user from db: %v", err)
-		}
-		if item == nil {
-			exists = false
-			return nil
-		}
-		err2 := item.Value(func(val []byte) error {
-			fmt.Printf("The UserData is: %s\n", val)
-			valCopy = append([]byte{}, val...)
-			return nil
-		})
+	// Query to check if the user exists based on the UserId
+	query := `SELECT UserJson FROM users WHERE UserId = ?`
+	row := db.QueryRow(query, userId)
 
-		if err2 != nil {
-			return err2
-		}
-
-		return nil
-	})
-
+	// Retrieve the JSON data from the row
+	var userJson []byte
+	err := row.Scan(&userJson)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			// User not found
+			return false, user, nil
+		}
 		return false, user, fmt.Errorf("error checking user existence: %v", err)
 	}
 
-	if exists {
-		err := json.Unmarshal(valCopy, &user)
-		if err != nil {
-			return false, user, fmt.Errorf("error unmarshalling user data: %v", err)
-		}
+	// Deserialize the JSON data into the User struct
+	user, err = JSONToObject(userJson)
+	if err != nil {
+		return false, user, fmt.Errorf("error unmarshalling user JSON: %v", err)
 	}
 
+	// If the user was found and deserialized, it exists
+	exists = true
 	return exists, user, nil
 }
 
-// Delete a user by UserId
 func DeleteUser(userId string) error {
-	err := db.Update(func(txn *badger.Txn) error {
-		// Delete the user by UserId
-		err := txn.Delete([]byte(userId))
-		return err
-	})
-
+	query := `DELETE FROM users WHERE UserId = ?`
+	_, err := db.Exec(query, userId)
 	if err != nil {
 		return fmt.Errorf("error deleting user: %v", err)
+	}
+	return nil
+}
+
+func CloseDB() {
+	if err := db.Close(); err != nil {
+		log.Fatalf("Error closing database: %v", err)
+	}
+	fmt.Println("SQLite database connection closed.")
+}
+func PrintAllUsers() error {
+	// Define a query to fetch all users
+	query := `SELECT UserId, UserJson FROM users`
+	rows, err := db.Query(query)
+	if err != nil {
+		return fmt.Errorf("error fetching all users: %v", err)
+	}
+	defer rows.Close() // Ensure the rows are closed when done
+
+	// Iterate over the rows and print each user's information
+	for rows.Next() {
+		var userId string
+		var userJson []byte
+		// Scan each row into the variables
+		err := rows.Scan(&userId, &userJson)
+		if err != nil {
+			return fmt.Errorf("error scanning user data: %v", err)
+		}
+
+		// Unmarshal the JSON data into the User struct
+		var user User
+		err = json.Unmarshal(userJson, &user)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling user data: %v", err)
+		}
+
+		// Print user information
+		fmt.Printf("UserID: %s\n", user.UserId)
+		fmt.Printf("UserName: %s\n", user.UserName)
+		fmt.Printf("Points: %d\n", user.Points)
+		fmt.Printf("JoinedDate: %s\n", user.JoinedDate)
+		fmt.Printf("FirstVideoLink: %s\n", user.FirstVideoLink)
+		fmt.Printf("LastVideoLink: %s\n", user.LastVideoLink)
+		fmt.Printf("LastComment: %s\n", user.LastComment)
+		fmt.Printf("LastSeen: %s\n", user.LastSeen)
+		fmt.Printf("ProfilePic: %s\n", user.ProfilePic)
+		fmt.Println("-------------------------------")
+	}
+
+	// Check for errors from iterating over rows
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error iterating over rows: %v", err)
 	}
 
 	return nil
 }
 
-// Close the database connection
-func CloseDB() {
-	if err := db.Close(); err != nil {
-		log.Fatalf("Error closing database: %v", err)
+func AddColumnToUsers(columnName string, columnType string) error {
+	// Define the SQL statement to add a new column to the 'users' table
+	query := fmt.Sprintf(`ALTER TABLE users ADD COLUMN %s %s;`, columnName, columnType)
+
+	// Execute the query
+	_, err := db.Exec(query)
+	if err != nil {
+		return fmt.Errorf("error adding column: %v", err)
 	}
-	fmt.Println("Badger database connection closed.")
+
+	fmt.Printf("Successfully added column: %s %s\n", columnName, columnType)
+	return nil
 }
