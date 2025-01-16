@@ -10,3 +10,7 @@ Build the applicaiton bot
 ```bash
 go build -o bot.exe
 ```
+To run the bot while in d
+```bash
+go run main.go -env dev
+```

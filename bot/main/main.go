@@ -86,7 +86,7 @@ func main() {
 	fmt.Printf("Running in %s environment\n", *env)
 	fmt.Printf("Server IP Address: %s\n", serverIP)
 
-	cmd := exec.Command("cmd.exe", "/c", "chromium.bat")
+	cmd := exec.Command("cmd.exe", "/c", "chrome.bat")
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println("Error starting batch script:", err)
@@ -96,6 +96,7 @@ func main() {
 	time.Sleep(2 * time.Second)
 	// Start Playwright instance
 	utils.RunNodeScript(env)
+	time.Sleep(10 * time.Second)
 	// connect to playwright which has the youtube open by now
 	pw, err := playwright.Run()
 	if err != nil {
@@ -105,14 +106,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
+	// defaultContext := browser.Contexts()
 	defaultContext := browser.Contexts()
-	page := defaultContext[0].Pages()[1] // get the first page
-	// page, err := browser.Contexts()[0].NewPage()
+	page := defaultContext[0].Pages()[0]
 	if err != nil {
 		log.Fatalf("could not start playwright: %v", err)
 	}
-	// streamURL := getStreamURL()
-	// page.Goto("https://www.youtube.com/live_chat?v=" + streamURL)
+	streamURL := getStreamURL()
+	fmt.Print("Stream URL: ", streamURL)
+	page.Goto("https://www.youtube.com/live_chat?v=" + streamURL)
 	page_cursor = page
 	// HTTP
 	http.HandleFunc("/", handleRequests)
@@ -125,12 +127,13 @@ func main() {
 }
 
 func SendMsgToYoutube(content string) {
-	fmt.Println("Sending message to youtube", content)
+
 	// if *environment == "dev" {
 	// 	return
 	// }
 	page_cursor.Locator("div#input").PressSequentially(content)
 	page_cursor.Keyboard().Press("Enter")
+	fmt.Println("Sent message to youtube", content)
 }
 
 type MessageProcessor struct{}

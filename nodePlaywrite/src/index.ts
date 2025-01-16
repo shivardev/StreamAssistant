@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { chromium, firefox } from "playwright";
 import { LikeResponseObj } from "./utils/likesApi.modal";
 import { CommentObj } from "./utils/commentApi.modal";
 import { API_URLS, urls } from "./utils/constants";
@@ -11,10 +11,11 @@ import { sendPostRequest } from "./utils/utils";
   let videoID: undefined | string = undefined
   // Launch the browser
   let isVideoURLSent: boolean = false
-  const browser = await chromium.connectOverCDP("http://127.0.0.1:8989");
-  const defaultContext = browser.contexts()[0];
-  const withVideoPage = defaultContext.pages()[0];
-  const chatOnlyPage = await defaultContext.newPage();
+  const browser = await firefox.launch({ headless: true });
+  // const defaultContext = browser.contexts()[0];
+  // const withVideoPage = defaultContext.pages()[0];
+  const withVideoPage = await browser.newPage();
+  // const chatOnlyPage = await defaultContext.newPage();
 
   let congoMap = new Map<number, boolean>();
 
@@ -125,11 +126,11 @@ import { sendPostRequest } from "./utils/utils";
   await withVideoPage.goto(
     "https://www.youtube.com/@blazingbane5565/live"
   );
-  setTimeout(async () => {
-    await chatOnlyPage.goto(
-      "https://www.youtube.com/live_chat?v=" + videoID
-    );
-  }, 20000);
+  // setTimeout(async () => {
+  //   await chatOnlyPage.goto(
+  //     "https://www.youtube.com/live_chat?v=" + videoID
+  //   );
+  // }, 20000);
 
 
   console.log("Listening for API calls...");
