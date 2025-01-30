@@ -222,6 +222,7 @@ func main() {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
 		}
 		if videoLink != streamUrl.Url {
+			fmt.Println("Stream url changed, resettings data!")
 			// stream url changed
 			reset()
 		}
@@ -352,5 +353,6 @@ func main() {
 }
 func reset() {
 	Users.Clear()
+	utils.ResetLeaderBoard()
 	fmt.Println("Stream data reset")
 }

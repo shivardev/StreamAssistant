@@ -51,3 +51,7 @@ func SetLeaderBoard(user User) {
 	}
 	fmt.Println(LeaderBoard)
 }
+
+func ResetLeaderBoard() {
+	LeaderBoard = make(map[string]Leader)
+}

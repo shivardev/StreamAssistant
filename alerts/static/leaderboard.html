@@ -12,6 +12,18 @@
         const data = await response.json();
         try {
           let content = "";
+          data.sort((a, b) => {
+            if (b.points !== a.points) {
+              return b.points - a.points;
+            }
+
+            if (b.height !== a.height) {
+              return b.height - a.height;
+            }
+
+            return a.userName.localeCompare(b.userName);
+          });
+
           data.forEach((user, index) => {
             content += `${user.userName} - ${user.points} `;
             if (data.length - 1 != index) {
