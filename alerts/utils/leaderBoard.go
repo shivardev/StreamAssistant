@@ -22,11 +22,16 @@ func GetTopLeaderBoard(isVerified bool) []Leader {
 		return sortedLeaderBoard[i].Points > sortedLeaderBoard[j].Points
 	})
 
-	// Return top 2 users
 	if isVerified {
-		return sortedLeaderBoard[:2]
+		if len(sortedLeaderBoard) > 2 {
+			return sortedLeaderBoard[:2]
+		}
+		return sortedLeaderBoard
 	} else {
-		return sortedLeaderBoard[:4]
+		if len(sortedLeaderBoard) > 4 {
+			return sortedLeaderBoard[:4]
+		}
+		return sortedLeaderBoard
 	}
 }
 
