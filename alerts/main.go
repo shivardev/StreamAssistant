@@ -13,6 +13,7 @@ import (
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 type MessagePayload struct {
@@ -175,6 +176,7 @@ func processUserPoints() {
 				utils.SendMsgToYoutube(fmt.Sprintf(utils.SubscriberMsgs[rand.Intn(len(utils.SubscriberMsgs))], msg.AuthorName, user.Points))
 			}
 		}
+		utils.SetLeaderBoard(user)
 		fmt.Println("User: ", user.UserName, "Processed")
 	}
 }
@@ -186,7 +188,13 @@ func main() {
 	go processSpeakQueue()
 	go processUserPoints()
 	app := fiber.New()
-
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "*",                          // Allow all origins (you can replace * with specific domains like http://localhost:3000)
+		AllowMethods:     "GET,POST,PUT,DELETE",        // Allowed HTTP methods
+		AllowHeaders:     "Content-Type,Authorization", // Allowed headers
+		ExposeHeaders:    "Content-Length",             // Headers to expose to the browser
+		AllowCredentials: false,                        // Allow credentials (cookies, HTTP authentication)
+	}))
 	app.Static("/", "./static")
 	app.Get(("/"), func(c *fiber.Ctx) error {
 		return c.SendString("Alive")
@@ -212,6 +220,10 @@ func main() {
 		if err := c.BodyParser(&streamUrl); err != nil {
 			fmt.Println("Error parsing body:", err)
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to parse request body")
+		}
+		if videoLink != streamUrl.Url {
+			// stream url changed
+			reset()
 		}
 		videoLink = streamUrl.Url
 		return c.Status(fiber.StatusOK).SendString("Stream url received successfully")
@@ -277,6 +289,22 @@ func main() {
 		UserName string `json:"userName"`
 		Action   string `json:"action"`
 	}
+	app.Get("/leaderboard", func(c *fiber.Ctx) error {
+		topTwo := utils.GetTopTwoLeaderBoard()
+		fmt.Println(topTwo)
+		if len(topTwo) == 0 {
+			return c.JSON([]map[string]interface{}{})
+		}
+		leaderboard := []map[string]interface{}{}
+		for i := 0; i < len(topTwo); i++ {
+			leaderboard = append(leaderboard, map[string]interface{}{
+				"userName": topTwo[i].UserName,
+				"points":   topTwo[i].Points,
+			})
+		}
+
+		return c.JSON(leaderboard)
+	})
 	app.Post("/insta", func(c *fiber.Ctx) error {
 		var notification InstagramNotification
 
@@ -321,4 +349,8 @@ func main() {
 		}
 	}))
 	log.Fatal(app.Listen(":3000"))
+}
+func reset() {
+	Users.Clear()
+	fmt.Println("Stream data reset")
 }

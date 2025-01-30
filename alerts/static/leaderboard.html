@@ -1,0 +1,54 @@
+<html>
+  <head> </head>
+  <script>
+    setInterval(async () => {
+      try {
+        const response = await fetch("http://10.0.0.236:3000/leaderboard");
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        try {
+          let content = "";
+          data.forEach((user, index) => {
+            content += `${user.userName} - ${user.points} `;
+            if (data.length - 1 != index) {
+              content += "| ";
+            }
+          });
+
+          const marquee = document.getElementById("marquee");
+          if (data.length == 0) marquee.style.background = "transparent";
+          else marquee.style.background = "brown";
+          marquee.innerHTML = content;
+        } catch (error) {
+          const marquee = document.getElementById("marquee");
+          marquee.style.background = "transparent";
+          console.log(error);
+        }
+        console.log(data);
+      } catch (error) {
+        console.log("Error fetching data:", error);
+      }
+    }, 2000);
+  </script>
+  <style>
+    * {
+      margin: 0px;
+    }
+    #marquee {
+      text-align: center;
+      width: 100%;
+      padding: 2px 5px 2px 5px;
+      background-color: brown;
+      color: white;
+    }
+  </style>
+  <body>
+    <p id="marquee" width="auto" direction="right" height="auto"></p>
+  </body>
+  <style></style>
+</html>
+<span> </span>

@@ -17,7 +17,7 @@ func Contains(slice []string, item string) bool {
 }
 
 func RunNodeScript(env *string) {
-	workingDir := `D:\coding\streamAssistant\nodePlaywrite\dist`
+	workingDir := `E:\coding\streamAssistant\nodePlaywrite\dist`
 	var cmd *exec.Cmd
 
 	if *env == "dev" {
