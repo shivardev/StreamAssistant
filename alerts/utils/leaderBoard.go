@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -13,7 +12,7 @@ type Leader struct {
 
 var LeaderBoard = make(map[string]Leader)
 
-func GetTopTwoLeaderBoard() []Leader {
+func GetTopLeaderBoard(isVerified bool) []Leader {
 	var sortedLeaderBoard []Leader
 	for _, user := range LeaderBoard {
 		sortedLeaderBoard = append(sortedLeaderBoard, user)
@@ -24,11 +23,11 @@ func GetTopTwoLeaderBoard() []Leader {
 	})
 
 	// Return top 2 users
-	if len(sortedLeaderBoard) > 2 {
+	if isVerified {
 		return sortedLeaderBoard[:2]
+	} else {
+		return sortedLeaderBoard[:4]
 	}
-	fmt.Println(sortedLeaderBoard)
-	return sortedLeaderBoard
 }
 
 func SetLeaderBoard(user User) {
@@ -49,7 +48,6 @@ func SetLeaderBoard(user User) {
 		}
 		LeaderBoard[user.UserId] = newLeader
 	}
-	fmt.Println(LeaderBoard)
 }
 
 func ResetLeaderBoard() {

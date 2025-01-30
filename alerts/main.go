@@ -176,7 +176,9 @@ func processUserPoints() {
 				utils.SendMsgToYoutube(fmt.Sprintf(utils.SubscriberMsgs[rand.Intn(len(utils.SubscriberMsgs))], msg.AuthorName, user.Points))
 			}
 		}
-		utils.SetLeaderBoard(user)
+		go func() {
+			utils.SetLeaderBoard(user)
+		}()
 		fmt.Println("User: ", user.UserName, "Processed")
 	}
 }
@@ -291,7 +293,9 @@ func main() {
 		Action   string `json:"action"`
 	}
 	app.Get("/leaderboard", func(c *fiber.Ctx) error {
-		topTwo := utils.GetTopTwoLeaderBoard()
+
+		isVertical := c.Query("isVertical", "false") == "true"
+		topTwo := utils.GetTopLeaderBoard(isVertical)
 		fmt.Println(topTwo)
 		if len(topTwo) == 0 {
 			return c.JSON([]map[string]interface{}{})

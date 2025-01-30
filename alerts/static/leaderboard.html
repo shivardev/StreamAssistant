@@ -3,7 +3,9 @@
   <script>
     setInterval(async () => {
       try {
-        const response = await fetch("http://10.0.0.236:3000/leaderboard");
+        console.log(window.innerWidth)
+        const isVertical = window.innerWidth > 1900? false:true
+        const response = await fetch("http://10.0.0.236:3000/leaderboard?vertical="+isVertical);
 
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -44,7 +46,7 @@
       } catch (error) {
         console.log("Error fetching data:", error);
       }
-    }, 2000);
+    }, 5000);
   </script>
   <style>
     * {
