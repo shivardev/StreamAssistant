@@ -191,11 +191,11 @@ func main() {
 	go processUserPoints()
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*",                          // Allow all origins (you can replace * with specific domains like http://localhost:3000)
-		AllowMethods:     "GET,POST,PUT,DELETE",        // Allowed HTTP methods
-		AllowHeaders:     "Content-Type,Authorization", // Allowed headers
-		ExposeHeaders:    "Content-Length",             // Headers to expose to the browser
-		AllowCredentials: false,                        // Allow credentials (cookies, HTTP authentication)
+		AllowOrigins:     "*",
+		AllowMethods:     "GET,POST,PUT,DELETE",
+		AllowHeaders:     "Content-Type,Authorization",
+		ExposeHeaders:    "Content-Length",
+		AllowCredentials: false,
 	}))
 	app.Static("/", "./static")
 	app.Get(("/"), func(c *fiber.Ctx) error {
