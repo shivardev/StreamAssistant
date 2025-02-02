@@ -15,13 +15,13 @@ var WelcomeMsgs = []string{
 	"Yo %s, you're officially part of the crew now! 🔥",
 }
 
-// var CommandHandler = map[string]string{
-// 	"!cmds":    "list is available here 🔗 https://blazingbane.com/chatcmds",
-// 	"!cmd":     "list is available here 🔗 https://blazingbane.com/chatcmds",
-// 	"!discord": "join the discord 🔗 https://discord.com/invite/U5jDNUPceM",
-// 	"!setup":   "setup is available here 🔗 https://blazingbane.com/setup",
-// 	"!blog":    "Check out all blogs! - 🔗 https://blazingbane.com/blog",
-// }
+var CommandHandler = map[string]string{
+	"!cmds":    "list is available here 🔗 https://blazingbane.com/chatcmds",
+	"!cmd":     "list is available here 🔗 https://blazingbane.com/chatcmds",
+	"!discord": "join the discord 🔗 https://discord.com/invite/U5jDNUPceM",
+	"!setup":   "setup is available here 🔗 https://blazingbane.com/setup",
+	"!blog":    "Check out all blogs! - 🔗 https://blazingbane.com/blog",
+}
 
 var SubscriberMsgs = []string{
 	"Look who decided to show up! %s, back with %d points... Don’t get too cocky! 😜",

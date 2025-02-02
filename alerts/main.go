@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"myproject/utils"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -66,33 +65,32 @@ func processMsgQueue() {
 			speakQueue <- msg
 		}
 
-		// lowerMessage := strings.ToLower(msg.MessageContent)
-		// for command, response := range utils.CommandHandler {
-		// 	if strings.HasPrefix(lowerMessage, command) {
-		// 		// Send the corresponding response message
-		// 		fmt.Println(response)
-		// 		utils.SendMsgToYoutube(response)
-		// 		continue
-		// 	}
-		// }
+		lowerMessage := strings.ToLower(msg.MessageContent)
+		for command, response := range utils.CommandHandler {
+			if strings.HasPrefix(lowerMessage, command) {
+				fmt.Println(response)
+				utils.SendMsgToYoutube(response)
+				continue
+			}
+		}
 		userDatabaseQueue <- msg
 	}
 }
 
-func initMessageHandlers() {
-	val := reflect.ValueOf(relangiData)
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Type().Field(i)
-		fieldName := field.Tag.Get("json")
-		messageHandlers[fieldName] = func(f reflect.Value) func() {
-			return func() {
-				if f.Len() > 0 {
-					utils.SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
-				}
-			}
-		}(val.Field(i))
-	}
-}
+// func initMessageHandlers() {
+// 	val := reflect.ValueOf(relangiData)
+// 	for i := 0; i < val.NumField(); i++ {
+// 		field := val.Type().Field(i)
+// 		fieldName := field.Tag.Get("json")
+// 		messageHandlers[fieldName] = func(f reflect.Value) func() {
+// 			return func() {
+// 				if f.Len() > 0 {
+// 					utils.SendMsgToYoutube(f.Index(rand.Intn(f.Len())).Interface().(string))
+// 				}
+// 			}
+// 		}(val.Field(i))
+// 	}
+// }
 
 // Define structs to match the JSON response structure
 type Action struct {
@@ -186,7 +184,7 @@ func processUserPoints() {
 func main() {
 	utils.GetActionList()
 	utils.DataBaseConnection()
-	initMessageHandlers()
+	// initMessageHandlers()
 	go processMsgQueue()
 	go processSpeakQueue()
 	go processUserPoints()
