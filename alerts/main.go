@@ -65,13 +65,14 @@ func processMsgQueue() {
 		if len(msg.MessageContent) > 6 && (strings.HasPrefix(msg.MessageContent, "!speak") || strings.HasPrefix(msg.MessageContent, "! speak")) {
 			speakQueue <- msg
 		}
+
 		lowerMessage := strings.ToLower(msg.MessageContent)
-		if !utils.IgnoredUsers.Contains(msg.AuthorName) {
-			for keyword, handler := range messageHandlers {
-				if strings.Contains(lowerMessage, keyword) {
-					handler()
-					break // Assuming only one handler is needed per message
-				}
+		for command, response := range utils.CommandHandler {
+			if strings.HasPrefix(lowerMessage, command) {
+				// Send the corresponding response message
+				fmt.Println(response)
+				utils.SendMsgToYoutube(response)
+				continue
 			}
 		}
 		userDatabaseQueue <- msg
