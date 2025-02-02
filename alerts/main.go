@@ -66,15 +66,15 @@ func processMsgQueue() {
 			speakQueue <- msg
 		}
 
-		lowerMessage := strings.ToLower(msg.MessageContent)
-		for command, response := range utils.CommandHandler {
-			if strings.HasPrefix(lowerMessage, command) {
-				// Send the corresponding response message
-				fmt.Println(response)
-				utils.SendMsgToYoutube(response)
-				continue
-			}
-		}
+		// lowerMessage := strings.ToLower(msg.MessageContent)
+		// for command, response := range utils.CommandHandler {
+		// 	if strings.HasPrefix(lowerMessage, command) {
+		// 		// Send the corresponding response message
+		// 		fmt.Println(response)
+		// 		utils.SendMsgToYoutube(response)
+		// 		continue
+		// 	}
+		// }
 		userDatabaseQueue <- msg
 	}
 }

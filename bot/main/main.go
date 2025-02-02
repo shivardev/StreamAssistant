@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/emirpasic/gods/sets/hashset"
@@ -20,6 +21,8 @@ var (
 	page_cursor playwright.Page
 	environment *string
 )
+var sendMsgToYoutubeQ = make(chan string, 10) // Queue with a buffer size of 10
+var wg sync.WaitGroup
 var Users = hashset.New()
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +44,7 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 		// Check if the message is not empty and process it
 		if msg.Msg != "" {
 			// Call the SendMsgToYoutube function to process the message
-			SendMsgToYoutube(msg.Msg)
+			sendMsgToYoutubeQ <- msg.Msg
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, "Message processed: %s", msg.Msg)
 		} else {
@@ -113,6 +116,7 @@ func main() {
 		log.Fatalf("could not start playwright: %v", err)
 	}
 	streamURL := getStreamURL()
+	go sendMsgToYoutubeQHandler()
 	fmt.Print("Stream URL: ", streamURL)
 	page.Goto("https://www.youtube.com/live_chat?v=" + streamURL)
 	page_cursor = page
@@ -127,13 +131,17 @@ func main() {
 }
 
 func SendMsgToYoutube(content string) {
-
-	// if *environment == "dev" {
-	// 	return
-	// }
 	page_cursor.Locator("div#input").PressSequentially(content)
 	page_cursor.Keyboard().Press("Enter")
 	fmt.Println("Sent message to youtube", content)
+}
+func sendMsgToYoutubeQHandler() {
+	defer wg.Done()
+
+	for message := range sendMsgToYoutubeQ {
+		SendMsgToYoutube(message)
+		time.Sleep(2 * time.Second)
+	}
 }
 
 type MessageProcessor struct{}
